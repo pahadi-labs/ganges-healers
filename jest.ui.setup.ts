@@ -61,3 +61,35 @@ jest.mock('next-auth/react', () => ({
     status: 'unauthenticated'
   })),
 }));
+
+// Prevent jsdom navigation noise (Not implemented: navigation except hash changes)
+// If location exists, just stub assign/replace; otherwise define minimally
+try {
+  if (window.location) {
+    window.location.assign = jest.fn()
+    window.location.replace = jest.fn()
+  }
+} catch {}
+
+// Polyfill requestIdleCallback for Next.js intersection util in tests
+if (!("requestIdleCallback" in window)) {
+  // @ts-expect-error define for tests only
+  window.requestIdleCallback = (cb: (deadline: number) => void) => setTimeout(() => cb(Date.now()), 1)
+}
+
+// Filter only specific, harmless console errors to reduce noise in UI tests
+const NAV_ERR = 'Not implemented: navigation (except hash changes)'
+const RADIX_TITLE_ERR = '`DialogContent` requires a `DialogTitle`'
+const _origConsoleError = console.error
+console.error = (...args: any[]) => {
+  const msg = typeof args[0] === 'string' ? args[0] : ''
+  if (msg.includes(NAV_ERR)) return
+  if (msg.includes(RADIX_TITLE_ERR)) return
+  _origConsoleError(...args)
+}
+// Some libs read window.navigation (optional stub)
+try {
+  if (!('navigation' in window)) {
+    Object.defineProperty(window as any, 'navigation', { value: {}, writable: true })
+  }
+} catch {}

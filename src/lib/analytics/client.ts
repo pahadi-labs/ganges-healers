@@ -2,7 +2,14 @@
 // Tiny client-side analytics shim; tree-shakeable and safe for SSR
 // No side-effects at module scope
 
-export type AnalyticsEvent = 'booking_modal_open' | 'program_enroll_click' | 'product_service_cta_click'
+export type AnalyticsEvent =
+  | 'booking_modal_open'
+  | 'program_enroll_click'
+  | 'product_service_cta_click'
+  | 'booking_reschedule_open'
+  | 'booking_reschedule_success'
+  | 'booking_cancel_open'
+  | 'booking_cancel_success'
 
 export type BookingModalOpenProps = {
   serviceSlug: string
@@ -26,9 +33,16 @@ export type ProductServiceCtaClickProps = {
   ts: number
 }
 
+export type BookingManageEventProps = {
+  bookingId: string
+  serviceSlug: string
+  path: string
+  ts: number
+}
+
 export function track(
   event: AnalyticsEvent,
-  props: BookingModalOpenProps | ProgramEnrollClickProps | ProductServiceCtaClickProps
+  props: BookingModalOpenProps | ProgramEnrollClickProps | ProductServiceCtaClickProps | BookingManageEventProps
 ): void {
   if (typeof window === 'undefined') return
   // Stable log tag for local inspection

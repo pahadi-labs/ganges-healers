@@ -31,7 +31,7 @@ export default function HealerBookAction({ healer, serviceId, serviceName }: Hea
 
   return (
     <>
-      <Button onClick={onOpen} size="sm" className="w-full">Book</Button>
+  <Button onClick={onOpen} size="sm" className="w-full" data-test="book-btn" data-healer-id={healer.id} data-service-id={serviceId}>Book</Button>
       {/* Keep modal mounted to avoid transient unmounts during route transitions */}
       <BookingModal
         isOpen={open}

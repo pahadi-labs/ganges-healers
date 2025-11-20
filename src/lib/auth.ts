@@ -77,7 +77,8 @@ if (!process.env.GOOGLE_CLIENT_ID) {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
-  secret: process.env.NEXTAUTH_SECRET || 'dev_fallback_secret',
+  // Prefer AUTH_SECRET (Auth.js v5), then NEXTAUTH_SECRET, then fallback
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'dev_fallback_secret',
   session: { strategy: 'jwt' },
   pages: { signIn: '/auth/signin', error: '/auth/error' },
   trustHost: true,

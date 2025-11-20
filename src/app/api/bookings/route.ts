@@ -44,7 +44,8 @@ export async function GET(request: NextRequest) {
         service: {
           select: {
             name: true,
-            category: true
+            category: true,
+            slug: true,
           }
         },
         payment: {
@@ -76,7 +77,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user?.id) {
+    // In TEST_MODE, allow an override via header for deterministic E2E API calls
+    const testUserId = (process.env.TEST_MODE === '1' || process.env.NEXT_PUBLIC_TEST_MODE === '1') ? request.headers.get('x-test-user-id') : null
+    const userId = session?.user?.id || testUserId
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -126,7 +130,7 @@ export async function POST(request: NextRequest) {
     // Create booking
     const booking = await prisma.booking.create({
       data: {
-        userId: session.user.id,
+        userId,
         healerId,
         serviceId,
         scheduledAt: scheduledDate,
@@ -162,8 +166,8 @@ export async function POST(request: NextRequest) {
       const scheduled = new Date(booking.scheduledAt)
       emailService.sendBookingConfirmation({
         // Assuming email exists on session.user; if not present in type, cast minimally
-        to: (session.user as { email?: string }).email || '',
-        userName: session.user.name || 'User',
+        to: (session?.user as { email?: string } | undefined)?.email || '',
+        userName: session?.user?.name || 'User',
         serviceName,
         healerName,
         date: format(scheduled, 'MMMM d, yyyy'),
