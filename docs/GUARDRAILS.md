@@ -146,3 +146,5 @@ These guardrails enforce iterative sprint-based delivery, ensuring:
 
 ---
 *Adhere to these guardrails for every change. Non-compliant patches should be rejected during review.*
+
+Note: A TEST_MODE-only helper endpoint exists at `/api/test/last-booking` to aid deterministic E2E tests; it is guarded by `TEST_MODE === '1'` and must not be enabled in production.
