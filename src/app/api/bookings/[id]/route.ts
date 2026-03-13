@@ -88,7 +88,19 @@ export async function PUT(
       )
     }
 
-    const json = await request.json()
+    let json: any
+    if (process.env.TEST_MODE === '1') {
+      const raw = await request.text().catch(() => '')
+      console.debug('[TEST_MODE] /api/bookings/[id] PUT raw body:', raw || '(none)')
+      try {
+        json = raw ? JSON.parse(raw) : {}
+      } catch (err) {
+        console.error('[TEST_MODE] JSON parse failed for /api/bookings/[id] PUT', err, 'raw:', raw)
+        return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+      }
+    } else {
+      json = await request.json()
+    }
     const parsed = RescheduleBody.safeParse(json)
     if (!parsed.success) {
       return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
@@ -275,7 +287,19 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json().catch(() => ({} as any)) // eslint-disable-line @typescript-eslint/no-explicit-any
+    let body: any
+    if (process.env.TEST_MODE === '1') {
+      const raw = await request.text().catch(() => '')
+      console.debug('[TEST_MODE] /api/bookings/[id] PATCH raw body:', raw || '(none)')
+      try {
+        body = raw ? JSON.parse(raw) : {}
+      } catch (err) {
+        console.error('[TEST_MODE] JSON parse failed for /api/bookings/[id] PATCH', err, 'raw:', raw)
+        body = {}
+      }
+    } else {
+      body = await request.json().catch(() => ({} as any)) // eslint-disable-line @typescript-eslint/no-explicit-any
+    }
     if (body?.action !== 'cancel') {
       return NextResponse.json({ error: 'Unsupported action' }, { status: 400 })
     }

@@ -87,7 +87,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const json = await request.json()
+    let json: any
+    if (process.env.TEST_MODE === '1') {
+      const raw = await request.text().catch(() => '')
+      console.debug('[TEST_MODE] /api/bookings POST raw body:', raw || '(none)')
+      try {
+        json = raw ? JSON.parse(raw) : {}
+      } catch (err) {
+        console.error('[TEST_MODE] JSON parse failed for /api/bookings POST', err, 'raw:', raw)
+        return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+      }
+    } else {
+      json = await request.json()
+    }
     const parsed = CreateBookingBody.safeParse(json)
     if (!parsed.success) {
       return NextResponse.json({ error: 'Invalid body' }, { status: 400 })

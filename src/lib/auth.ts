@@ -84,13 +84,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   providers,
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         const u = user as { id: string; role?: string; vip?: boolean; freeSessionCredits?: number }
         token.id = u.id
         if (u.role) token.role = u.role
         if (typeof u.vip !== 'undefined') token.vip = u.vip
         if (typeof u.freeSessionCredits !== 'undefined') token.freeSessionCredits = u.freeSessionCredits
+      }
+      // When the client calls update(), re-fetch name & image from DB
+      if (trigger === 'update' && token.id) {
+        const fresh = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { name: true, image: true },
+        })
+        if (fresh) {
+          token.name = fresh.name
+          token.picture = fresh.image
+        }
       }
       return token
     },

@@ -24,7 +24,16 @@ export async function POST(req: Request) {
   }
 
   // Safe parse after verification
-  const evt = JSON.parse(bodyText);
+  let evt: any
+  try {
+    evt = JSON.parse(bodyText)
+  } catch (err) {
+    if (process.env.TEST_MODE === '1') {
+      console.error('[TEST_MODE] JSON parse failed in payments webhook', err, 'raw:', bodyText)
+    }
+    console.error('[webhook] invalid payload')
+    return NextResponse.json({ ok: false, error: 'invalid-payload' }, { status: 400 })
+  }
   const type: string = evt?.event ?? 'unknown';
   const subId: string | undefined = evt?.payload?.subscription?.entity?.id;
   const payId: string | undefined = evt?.payload?.payment?.entity?.id;

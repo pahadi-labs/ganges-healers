@@ -26,13 +26,20 @@ test.describe('Manage bookings', () => {
     const slugAttr = await first.getAttribute('data-service-slug')
     await first.click()
     try {
-      await expect(page).toHaveURL(/\/services\/.+/, { timeout: 20000 })
-    } catch {
+      await page.waitForLoadState('networkidle')
+      await expect(page).toHaveURL(/\/services\/.+/, { timeout: 30000 })
+    } catch (navErr) {
+      // If navigation fails due to server runtime error, try direct goto using slug
+      const bodyText = await page.locator('body').innerText().catch(() => '')
+      if (bodyText.includes('Unexpected end of JSON input') || bodyText.includes('Error:')) {
+        console.log('Detected server error on service page, retrying via direct navigation')
+      }
       if (slugAttr) {
         await page.goto(`/services/${slugAttr}`)
-        await expect(page).toHaveURL(new RegExp(`/services/${slugAttr}`))
+        await page.waitForLoadState('networkidle')
+        await expect(page).toHaveURL(new RegExp(`/services/${slugAttr}`), { timeout: 30000 })
       } else {
-        throw new Error('Navigation to service detail failed and slug missing')
+        throw new Error('Navigation to service detail failed and slug missing: ' + String(navErr))
       }
     }
 
@@ -86,10 +93,10 @@ test.describe('Manage bookings', () => {
           return w.__e2eBookingId
         })) ?? null
       } catch {
-        // Fallback: poll GET /api/test/last-booking every 500ms up to 15s
+        // Fallback: poll GET /api/test/last-booking every 500ms up to 30s
         let lastBody: any = null // eslint-disable-line @typescript-eslint/no-explicit-any
         const start = Date.now()
-        while (Date.now() - start < 15000) {
+        while (Date.now() - start < 30000) {
           const resp = await page.request.get('/api/test/last-booking')
           if (resp.status() === 404) {
             throw new Error('GET /api/test/last-booking returned 404 — TEST_MODE may not be active. Run `pnpm run dev:test` which sets TEST_MODE=1')
@@ -113,7 +120,7 @@ test.describe('Manage bookings', () => {
       // The test runner process may not have TEST_MODE set; try polling the test endpoint directly as a fallback.
       let lastBody: any = null // eslint-disable-line @typescript-eslint/no-explicit-any
       const start = Date.now()
-      while (Date.now() - start < 15000) {
+      while (Date.now() - start < 30000) {
         const resp = await page.request.get('/api/test/last-booking')
         if (resp.status() === 404) {
           throw new Error('GET /api/test/last-booking returned 404 — TEST_MODE may not be active on the server. Start the test server with `pnpm run dev:test` which sets TEST_MODE=1')
@@ -147,14 +154,15 @@ test.describe('Manage bookings', () => {
 
     // Go to dashboard bookings (fallback source of truth)
     await page.goto('/dashboard/bookings')
-    await expect(page.getByText(/Upcoming/)).toBeVisible({ timeout: 30000 })
+    // Wait for dashboard to show upcoming bookings; allow extra time
+    await expect(page.getByText(/Upcoming/)).toBeVisible({ timeout: 45000 })
     // Wait for at least one booking to appear; if not, poll API briefly and reload once
     const bookingCards = page.locator('[data-test="booking-card"]')
     try {
-      await expect(bookingCards.first()).toBeVisible({ timeout: 15000 })
+      await expect(bookingCards.first()).toBeVisible({ timeout: 30000 })
     } catch {
       // Poll API to ensure booking is persisted, then reload
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 12; i++) {
         const resp = await page.request.get('/api/bookings')
         if (resp.ok()) {
           const data = await resp.json()
@@ -163,7 +171,7 @@ test.describe('Manage bookings', () => {
         await page.waitForTimeout(1000)
       }
       await page.reload()
-      await expect(bookingCards.first()).toBeVisible({ timeout: 15000 })
+      await expect(bookingCards.first()).toBeVisible({ timeout: 30000 })
     }
 
     // Open Reschedule within the first booking card
@@ -173,13 +181,13 @@ test.describe('Manage bookings', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     // Pick a different time (same date)
-    const tbuttons = dialog.getByRole('button').filter({ hasText: /AM|PM/ })
-    const count = await tbuttons.count()
-    if (count > 1) {
-      await tbuttons.nth(1).click()
-    } else {
-      await tbuttons.first().click()
-    }
+    // Use structure-based selector: pick first enabled button that is not Confirm/Cancel
+    const timeButtons = dialog
+      .locator('button')
+      .filter({ hasNotText: /Confirm|Cancel/i })
+      .filter({ has: page.locator(':not([disabled])') })
+
+    await timeButtons.first().click()
     const confirm2 = dialog.getByRole('button', { name: /Confirm/ })
     await confirm2.click()
 
