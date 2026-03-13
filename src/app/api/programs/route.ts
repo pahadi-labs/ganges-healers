@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { listPrograms } from '@/lib/programs/queries'
+import { cached } from '@/lib/cache'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -9,7 +10,10 @@ export async function GET(req: NextRequest) {
   const cursor = searchParams.get('cursor') || undefined
 
   try {
-    const data = await listPrograms({ q, serviceSlug, limit: Number.isFinite(limit) ? limit : undefined, cursor })
+    const cacheKey = `programs:${q || ''}:${serviceSlug || ''}:${limit || ''}:${cursor || ''}`
+    const data = await cached(cacheKey, () =>
+      listPrograms({ q, serviceSlug, limit: Number.isFinite(limit) ? limit : undefined, cursor })
+    )
     return NextResponse.json(data)
   } catch (e) {
     console.error('[programs][list][error]', e)

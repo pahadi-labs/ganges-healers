@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card"
 import { toast } from "sonner"
 import { Trash2, CheckCircle } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function StoreCheckoutPage() {
   const { data: session } = useSession()
@@ -168,8 +169,7 @@ export default function StoreCheckoutPage() {
           {items.map((item: CartItem) => (
             <div key={item.productId} className="flex items-center gap-3">
               {item.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.imageUrl} alt={item.title} className="w-12 h-12 object-cover rounded" />
+                <Image src={item.imageUrl} alt={item.title} width={48} height={48} className="w-12 h-12 object-cover rounded" />
               ) : (
                 <div className="w-12 h-12 bg-muted rounded" />
               )}

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/rbac'
+import { cached } from '@/lib/cache'
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,31 +52,35 @@ export async function GET(request: NextRequest) {
   // Localized escape hatch: Prisma client generated types are verbose; shape validated by construction above.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const prismaWhere: any = where
-    const [services, total] = await Promise.all([
-      prisma.service.findMany({ where: prismaWhere,
-        include: {
-          _count: {
-            select: { bookings: true }
-          }
-        },
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: [
-          { popularity: 'desc' },
-          { name: 'asc' }
-        ]
-      }),
-  prisma.service.count({ where: prismaWhere })
-    ])
+    const cacheKey = `services:${JSON.stringify(prismaWhere)}:${page}:${limit}`
+    const result = await cached(cacheKey, async () => {
+      const [services, total] = await Promise.all([
+        prisma.service.findMany({ where: prismaWhere,
+          include: {
+            _count: {
+              select: { bookings: true }
+            }
+          },
+          skip: (page - 1) * limit,
+          take: limit,
+          orderBy: [
+            { popularity: 'desc' },
+            { name: 'asc' }
+          ]
+        }),
+    prisma.service.count({ where: prismaWhere })
+      ])
+      return { services, total }
+    })
 
     return NextResponse.json({
       success: true,
-      data: services,
+      data: result.services,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit)
+        total: result.total,
+        totalPages: Math.ceil(result.total / limit)
       }
     })
   } catch (error) {

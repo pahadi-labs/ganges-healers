@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
+import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -75,10 +76,11 @@ export default async function OrdersPage() {
                   {order.items.map((item) => (
                     <div key={item.id} className="flex items-center gap-3">
                       {item.product.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <Image
                           src={item.product.imageUrl}
                           alt={item.product.title}
+                          width={40}
+                          height={40}
                           className="w-10 h-10 object-cover rounded"
                         />
                       ) : (

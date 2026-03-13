@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { canonicalOf } from '@/config/site'
 import type { Metadata } from 'next'
 import { listProducts } from '@/lib/store/queries'
@@ -55,8 +56,7 @@ export default async function StorePage({ searchParams }: { searchParams?: Promi
           {items.map((p) => (
             <Link href={`/store/${p.slug}`} key={p.id} className="border rounded p-4 hover:shadow focus-ring">
               {p.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.imageUrl} alt={p.title} className="w-full h-40 object-cover rounded" />
+                <Image src={p.imageUrl} alt={p.title} width={400} height={160} className="w-full h-40 object-cover rounded" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" loading="lazy" />
               ) : null}
               <div className="mt-2 font-medium">{p.title}</div>
               <div className="text-sm text-muted-foreground line-clamp-2">{p.shortDescription}</div>

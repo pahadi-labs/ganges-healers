@@ -3,6 +3,7 @@ import { getProductBySlug } from '@/lib/store/queries'
 import type { Metadata } from 'next'
 import { canonicalOf } from '@/config/site'
 import Link from 'next/link'
+import Image from 'next/image'
 import ProductCtaAnalytics from '@/app/store/[slug]/product-cta-analytics'
 import AddToCartButton from '@/components/store/AddToCartButton'
 import Breadcrumbs from '@/components/seo/Breadcrumbs'
@@ -34,16 +35,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           {p.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={p.imageUrl} alt={p.title} className="w-full rounded" />
+            <Image src={p.imageUrl} alt={p.title} width={600} height={400} className="w-full rounded" sizes="(max-width: 768px) 100vw, 50vw" priority />
           ) : (
             <div className="w-full h-64 bg-muted rounded" />
           )}
           {Array.isArray(p.gallery) && p.gallery.length > 0 ? (
             <div className="mt-3 grid grid-cols-4 gap-2">
               {p.gallery.map((g, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={i} src={g} alt={`${p.title} ${i+1}`} className="w-full h-20 object-cover rounded" />
+                <Image key={i} src={g} alt={`${p.title} ${i+1}`} width={150} height={80} className="w-full h-20 object-cover rounded" sizes="25vw" loading="lazy" />
               ))}
             </div>
           ) : null}

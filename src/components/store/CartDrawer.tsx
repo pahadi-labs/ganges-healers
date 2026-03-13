@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useCart } from "@/components/store/CartProvider"
 import { Button } from "@/components/ui/button"
 import {
@@ -33,10 +34,11 @@ export default function CartDrawer() {
             {items.map((item) => (
               <div key={item.productId} className="flex gap-3 items-start border-b pb-3">
                 {item.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={item.imageUrl}
                     alt={item.title}
+                    width={64}
+                    height={64}
                     className="w-16 h-16 object-cover rounded shrink-0"
                   />
                 ) : (

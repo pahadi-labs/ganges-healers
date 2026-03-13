@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useSession } from 'next-auth/react'
 import { Bell } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { getSocket, disconnectSocket } from '@/lib/socket-client'
 
 interface NotificationItem {
   id: string
@@ -14,17 +16,49 @@ interface NotificationItem {
 }
 
 export default function NotificationBell() {
+  const { data: session } = useSession()
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [open, setOpen] = useState(false)
+  const [usePolling, setUsePolling] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
+  const addRealtimeNotification = useCallback(
+    (n: { id: string; type: string; title: string; message: string; createdAt: string }) => {
+      setNotifications((prev) => [{ ...n, read: false }, ...prev])
+      setUnreadCount((c) => c + 1)
+    },
+    []
+  )
+
+  // Socket.IO connection — falls back to polling on failure
+  useEffect(() => {
+    const userId = session?.user?.id
+    if (!userId) return
+
+    const socket = getSocket(userId)
+
+    socket.on('notification', addRealtimeNotification)
+
+    socket.on('connect_error', () => {
+      // Socket unavailable (e.g. running on Vercel without custom server) — fall back to polling
+      setUsePolling(true)
+      disconnectSocket()
+    })
+
+    return () => {
+      socket.off('notification', addRealtimeNotification)
+      socket.off('connect_error')
+    }
+  }, [session?.user?.id, addRealtimeNotification])
+
+  // Initial fetch + polling fallback
   useEffect(() => {
     fetchNotifications()
-    // Poll every 60s
+    if (!usePolling) return
     const interval = setInterval(fetchNotifications, 60000)
     return () => clearInterval(interval)
-  }, [])
+  }, [usePolling])
 
   // Close on outside click
   useEffect(() => {
