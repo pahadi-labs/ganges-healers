@@ -50,6 +50,10 @@ model User {
   memberships    VIPMembership[]
   sessionCredits SessionCredit[]
   communityAccess CommunityAccess[]
+  communityPosts    CommunityPost[]
+  communityComments CommunityComment[]
+  communityLikes    CommunityLike[]
+  courseEnrollments  CourseEnrollment[]
   orders         Order[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -332,6 +336,88 @@ model CommunityAccess {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, level])
+}
+
+model CommunityPost {
+  id        String             @id @default(cuid())
+  userId    String
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  content   String             @db.Text
+  comments  CommunityComment[]
+  likes     CommunityLike[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+}
+
+model CommunityComment {
+  id        String        @id @default(cuid())
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String        @db.Text
+  createdAt DateTime      @default(now())
+
+  @@index([postId])
+  @@index([userId])
+}
+
+model CommunityLike {
+  id     String        @id @default(cuid())
+  postId String
+  post   CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId String
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId])
+}
+
+// --- Course / Learning Platform ---
+model Course {
+  id          String             @id @default(cuid())
+  slug        String             @unique
+  title       String
+  description String             @db.Text
+  pricePaise  Int
+  imageUrl    String?
+  isActive    Boolean            @default(true)
+  lessons     CourseLesson[]
+  enrollments CourseEnrollment[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([isActive])
+}
+
+model CourseLesson {
+  id       String  @id @default(cuid())
+  courseId String
+  course   Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title    String
+  videoUrl String?
+  content  String? @db.Text
+  order    Int
+
+  @@index([courseId, order])
+}
+
+model CourseEnrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  status    String   @default("pending_payment") // pending_payment, active, completed
+  progress  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@index([userId, status])
 }
 
 // --- Store / E-commerce Models ---

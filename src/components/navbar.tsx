@@ -50,6 +50,14 @@ export function Navbar() {
               <Link href="/store" className="text-sm font-medium hover:text-primary transition-colors focus-ring">
                 Store
               </Link>
+              <Link href="/courses" className="text-sm font-medium hover:text-primary transition-colors focus-ring">
+                Courses
+              </Link>
+              {session && (
+                <Link href="/community" className="text-sm font-medium hover:text-primary transition-colors focus-ring">
+                  Community
+                </Link>
+              )}
               {session && (
                 <Link href="/dashboard/orders" className="text-sm font-medium hover:text-primary transition-colors focus-ring">
                   Orders
