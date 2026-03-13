@@ -4,9 +4,12 @@ import Link from "next/link"
 import { useSession, signIn, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { ShoppingCart } from "lucide-react"
+import { useCart } from "@/components/store/CartProvider"
 
 export function Navbar() {
   const { data: session, status } = useSession()
+  const { totalItems, setIsOpen } = useCart()
 
   return (
     <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -39,10 +42,31 @@ export function Navbar() {
                   Billing
                 </Link>
               )}
+              <Link href="/store" className="text-sm font-medium hover:text-primary transition-colors focus-ring">
+                Store
+              </Link>
+              {session && (
+                <Link href="/dashboard/orders" className="text-sm font-medium hover:text-primary transition-colors focus-ring">
+                  Orders
+                </Link>
+              )}
             </div>
           </div>
 
           <div className="flex items-center space-x-4">
+            <button
+              type="button"
+              onClick={() => setIsOpen(true)}
+              className="relative p-2 hover:bg-muted rounded focus-ring"
+              aria-label="Open cart"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {totalItems > 99 ? "99+" : totalItems}
+                </span>
+              )}
+            </button>
             {status === "loading" ? (
               <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
             ) : session ? (

@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { canonicalOf } from '@/config/site'
 import Link from 'next/link'
 import ProductCtaAnalytics from '@/app/store/[slug]/product-cta-analytics'
+import AddToCartButton from '@/components/store/AddToCartButton'
 import Breadcrumbs from '@/components/seo/Breadcrumbs'
 import BreadcrumbsLd from '@/components/seo/BreadcrumbsLd'
 import { makeProductCrumbs } from '@/lib/seo/breadcrumbs'
@@ -61,6 +62,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               <span className="text-green-600">In stock</span>
             )}
           </div>
+          <AddToCartButton
+            productId={p.id}
+            slug={p.slug}
+            title={p.title}
+            pricePaise={p.pricePaise}
+            imageUrl={p.imageUrl}
+            stockStatus={p.stockStatus}
+          />
           {p.service ? (
             <div className="mt-4 space-y-2">
               <ProductCtaAnalytics productSlug={p.slug} serviceSlug={p.service.slug} href={`/services/${p.service.slug}?openBooking=1&productSlug=${encodeURIComponent(p.slug)}`}>

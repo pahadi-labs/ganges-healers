@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { activateProgramEnrollment } from '@/lib/payments/activateProgramEnrollment'
+import { activateStoreOrder } from '@/lib/payments/activateStoreOrder'
 import { generateInvoiceForPayment } from '@/lib/invoices/generate'
 
 export const runtime = 'nodejs'
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
     })
 
   const activation = await activateProgramEnrollment({ paymentId, orderId })
+  const storeActivation = await activateStoreOrder({ paymentId, orderId })
   // In tests, run invoice generation synchronously to avoid late logs after Jest ends
   const runSync = process.env.NODE_ENV === 'test' || process.env.RUN_SYNC_SIDE_EFFECTS === '1'
   if (runSync) {
@@ -72,8 +74,8 @@ export async function POST(req: Request) {
     generateInvoiceForPayment({ paymentId: updated.id, force: false })
       .catch(e => console.warn('[payments][verify][invoice_failed]', { paymentId: updated.id, error: (e as Error).message }))
   }
-  console.log('[payments][verify][success]', { paymentId: updated.id, gatewayPaymentId: paymentId, activation })
-  return NextResponse.json({ verified: true, payment: { id: updated.id }, activation })
+  console.log('[payments][verify][success]', { paymentId: updated.id, gatewayPaymentId: paymentId, activation, storeActivation })
+  return NextResponse.json({ verified: true, payment: { id: updated.id }, activation, storeActivation })
   } catch (err) {
     console.error('[payments][verify][error]', err)
     return NextResponse.json({ error: 'Verification failed' }, { status: 500 })

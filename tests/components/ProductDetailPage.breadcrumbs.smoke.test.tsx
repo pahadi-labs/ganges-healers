@@ -1,6 +1,11 @@
 import React from 'react'
 import { render } from '@testing-library/react'
 
+jest.mock('@/components/store/AddToCartButton', () => ({
+  __esModule: true,
+  default: () => <div data-testid="add-to-cart" />,
+}))
+
 jest.mock('@/lib/store/queries', () => ({
   getProductBySlug: jest.fn(async () => ({
     id: '1', slug: 'copper-bottle', title: 'Copper Bottle', shortDescription: 'Nice', longDescription: 'Long', pricePaise: 19900, imageUrl: null, ratingAvg: 4.5, stockStatus: 'IN_STOCK',

@@ -50,6 +50,7 @@ model User {
   memberships    VIPMembership[]
   sessionCredits SessionCredit[]
   communityAccess CommunityAccess[]
+  orders         Order[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }
@@ -134,6 +135,7 @@ model Service {
   isActive    Boolean     @default(true)
   popularity  Int         @default(0)
   bookings    Booking[]
+  products    Product[]
   
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -330,6 +332,67 @@ model CommunityAccess {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, level])
+}
+
+// --- Store / E-commerce Models ---
+model ProductCategory {
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  title     String
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+model Product {
+  id               String           @id @default(cuid())
+  slug             String           @unique
+  title            String
+  shortDescription String           @default("")
+  longDescription  String           @db.Text @default("")
+  pricePaise       Int
+  imageUrl         String?
+  gallery          Json?            // Array of image URLs
+  ratingAvg        Float?
+  stockStatus      String           @default("IN_STOCK") // IN_STOCK | LOW | OUT
+  categoryId       String?
+  category         ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  serviceId        String?
+  service          Service?         @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  isActive         Boolean          @default(true)
+  orderItems       OrderItem[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([isActive])
+  @@index([categoryId])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          String      @default("pending_payment") // pending_payment | paid | shipped | delivered | cancelled
+  totalPaise      Int
+  paymentId       String?
+  shippingAddress Json?
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int
+  pricePaise Int    // price snapshot at purchase time
+
+  @@index([orderId])
+  @@index([productId])
 }
 
 // NextAuth tables (Prisma Adapter)
