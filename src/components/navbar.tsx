@@ -32,6 +32,11 @@ export function Navbar() {
                   Dashboard
                 </Link>
               )}
+              {session?.user?.role === "HEALER" && (
+                <Link href="/healer" className="text-sm font-medium hover:text-primary transition-colors focus-ring">
+                  Healer Dashboard
+                </Link>
+              )}
               {session && (
                 <Link href="/dashboard/membership" className="text-sm font-medium hover:text-primary transition-colors focus-ring">
                   Membership
@@ -48,6 +53,11 @@ export function Navbar() {
               {session && (
                 <Link href="/dashboard/orders" className="text-sm font-medium hover:text-primary transition-colors focus-ring">
                   Orders
+                </Link>
+              )}
+              {session && (
+                <Link href="/dashboard/settings" className="text-sm font-medium hover:text-primary transition-colors focus-ring">
+                  Settings
                 </Link>
               )}
             </div>
