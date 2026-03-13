@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ShoppingCart } from "lucide-react"
 import { useCart } from "@/components/store/CartProvider"
+import SearchBar from "@/components/search/SearchBar"
 
 export function Navbar() {
   const { data: session, status } = useSession()
@@ -78,6 +79,7 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center space-x-4">
+            <SearchBar />
             <button
               type="button"
               onClick={() => setIsOpen(true)}
