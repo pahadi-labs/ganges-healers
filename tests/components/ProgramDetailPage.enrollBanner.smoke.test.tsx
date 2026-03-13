@@ -16,12 +16,12 @@ jest.mock('@/lib/programs/queries', () => ({
 // Component under test is an async server component; render its JSX
 
 describe('Program detail page banner', () => {
-  test('renders enroll coming soon CTA', async () => {
+  test('renders enroll CTA', async () => {
     // nextjs route params are a promise in this app
   const ui = (await Page({ params: Promise.resolve({ slug: 'abc' }) })) as unknown as React.ReactElement
   render(ui)
 
-    expect(await screen.findByText(/Enroll \(coming soon\)/i)).toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: /interested/i })).toBeInTheDocument()
+    expect(await screen.findByText(/Enroll in this program/i)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /enroll now/i })).toBeInTheDocument()
   })
 })

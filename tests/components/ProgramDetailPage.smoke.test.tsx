@@ -21,6 +21,6 @@ describe('ProgramDetailPage (server component) smoke', () => {
     render(el)
     expect(screen.getByRole('heading', { level: 1, name: 'Yoga Basics' })).toBeInTheDocument()
     expect(screen.getByText(/Sessions:/)).toBeInTheDocument()
-    expect(screen.getByText(/₹/)).toBeInTheDocument()
+    expect(screen.getAllByText(/₹/).length).toBeGreaterThanOrEqual(1)
   })
 })

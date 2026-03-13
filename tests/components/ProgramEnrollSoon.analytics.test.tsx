@@ -7,6 +7,12 @@ import ProgramEnrollSoon from '@/components/features/programs/ProgramEnrollSoon'
 jest.mock('@/lib/analytics/client', () => ({
   track: jest.fn(),
 }))
+jest.mock('next-auth/react', () => ({
+  useSession: () => ({ data: { user: { id: 'u1', email: 'a@b.com', name: 'Test' } } }),
+}))
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn() }),
+}))
 
 const { track } = jest.requireMock('@/lib/analytics/client') as { track: jest.Mock }
 
@@ -14,12 +20,15 @@ describe('ProgramEnrollSoon analytics', () => {
   test('click fires program_enroll_click with expected payload', async () => {
     const user = userEvent.setup()
     // Use existing jsdom location and append a query for stability
-  const originalHref = window.location.href
+    const originalHref = window.location.href
     window.history.pushState({}, '', '/programs/abc?ref=test')
 
-    render(<ProgramEnrollSoon programSlug="abc" serviceSlug="svc-1" />)
+    // Mock fetch to prevent actual API calls
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, json: async () => ({ error: 'test' }) }) as jest.Mock
 
-    const btn = screen.getByRole('button', { name: /i\'m interested|i’m interested/i })
+    render(<ProgramEnrollSoon programSlug="abc" programTitle="Test Program" pricePaise={50000} serviceSlug="svc-1" />)
+
+    const btn = screen.getByRole('button', { name: /enroll now/i })
     await user.click(btn)
 
     expect(track).toHaveBeenCalledTimes(1)
@@ -28,7 +37,7 @@ describe('ProgramEnrollSoon analytics', () => {
     expect(props).toMatchObject({ programSlug: 'abc', serviceSlug: 'svc-1' })
     expect(typeof props.ts).toBe('number')
     expect(props.path).toBe('/programs/abc?ref=test')
-  // restore
+    // restore
     window.history.replaceState({}, '', originalHref)
   })
 })

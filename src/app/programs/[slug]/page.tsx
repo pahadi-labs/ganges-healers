@@ -35,7 +35,7 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
       <ProgramLd program={p} />
       <h1 className="text-3xl font-semibold">{p.title}</h1>
       <div className="mt-2 text-sm text-muted-foreground">Sessions: {p.sessionsCount} • Price: ₹{(p.pricePaise/100).toFixed(2)}</div>
-      <ProgramEnrollSoon programSlug={p.slug} serviceSlug={p.serviceSlug ?? undefined} />
+      <ProgramEnrollSoon programSlug={p.slug} programTitle={p.title} pricePaise={p.pricePaise} serviceSlug={p.serviceSlug ?? undefined} />
       {p.serviceSlug ? (
         <div className="mt-4">
           <Link href={`/services/${p.serviceSlug}?openBooking=1&programSlug=${encodeURIComponent(p.slug)}`}>
