@@ -436,6 +436,21 @@ model AudioTrack {
   @@index([isPremium])
 }
 
+// --- Blog / Content Engine ---
+model BlogPost {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  content   String   @db.Text
+  excerpt   String?
+  imageUrl  String?
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([published, createdAt(sort: Desc)])
+}
+
 // --- Store / E-commerce Models ---
 model ProductCategory {
   id        String    @id @default(cuid())
