@@ -5,6 +5,10 @@ jest.mock('@/lib/prisma', () => ({
     service: { findMany: jest.fn(async () => ([{ slug: 'yoga', updatedAt: new Date('2024-01-01') }])) },
     program: { findMany: jest.fn(async () => ([{ slug: 'foundation-6-week' }])) },
     healer: { findMany: jest.fn(async () => ([{ id: 'h1', slug: 'anita-sharma' }])) },
+    course: { findMany: jest.fn(async () => ([{ slug: 'intro-meditation', updatedAt: new Date('2024-02-01') }])) },
+    product: { findMany: jest.fn(async () => ([{ slug: 'himalayan-salt-lamp', updatedAt: new Date('2024-03-01') }])) },
+    blogPost: { findMany: jest.fn(async () => ([{ slug: 'benefits-of-yoga', updatedAt: new Date('2024-04-01') }])) },
+    audioTrack: { findMany: jest.fn(async () => ([{ slug: 'morning-meditation', createdAt: new Date('2024-05-01') }])) },
   }
 }))
 
@@ -27,6 +31,14 @@ describe('seo sitemap helper', () => {
       'https://ganges-healers.vercel.app/services',
       'https://ganges-healers.vercel.app/programs',
       'https://ganges-healers.vercel.app/healers',
+      'https://ganges-healers.vercel.app/courses',
+      'https://ganges-healers.vercel.app/courses/intro-meditation',
+      'https://ganges-healers.vercel.app/store',
+      'https://ganges-healers.vercel.app/store/himalayan-salt-lamp',
+      'https://ganges-healers.vercel.app/blog',
+      'https://ganges-healers.vercel.app/blog/benefits-of-yoga',
+      'https://ganges-healers.vercel.app/audio',
+      'https://ganges-healers.vercel.app/audio/morning-meditation',
     ]))
     for (const it of items) {
       expect(typeof it.url).toBe('string')

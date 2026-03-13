@@ -10,7 +10,7 @@ export type SitemapItem = {
 
 export async function getSitemapItems(): Promise<SitemapItem[]> {
   // Query minimal fields only; tolerate absent columns by using loose typing
-  const [services, programs, healers] = await Promise.all([
+  const [services, programs, healers, courses, products, blogPosts, audioTracks] = await Promise.all([
     prisma.service.findMany({
       select: { slug: true, updatedAt: true },
     }) as Promise<Array<{ slug?: string; updatedAt?: Date | null }>>,
@@ -22,6 +22,21 @@ export async function getSitemapItems(): Promise<SitemapItem[]> {
   (prisma as any).healer.findMany({
       select: { id: true, slug: true, updatedAt: true },
     }) as Promise<Array<{ id: string; slug?: string; updatedAt?: Date | null }>>,
+    prisma.course.findMany({
+      where: { isActive: true },
+      select: { slug: true, updatedAt: true },
+    }),
+    prisma.product.findMany({
+      where: { isActive: true },
+      select: { slug: true, updatedAt: true },
+    }),
+    prisma.blogPost.findMany({
+      where: { published: true },
+      select: { slug: true, updatedAt: true },
+    }),
+    prisma.audioTrack.findMany({
+      select: { slug: true, createdAt: true },
+    }),
   ])
 
   const now = new Date()
@@ -56,7 +71,47 @@ export async function getSitemapItems(): Promise<SitemapItem[]> {
     { url: canonicalOf('/services'), changeFrequency: 'weekly', priority: 0.6, lastModified: now },
     { url: canonicalOf('/programs'), changeFrequency: 'weekly', priority: 0.6, lastModified: now },
     { url: canonicalOf('/healers'), changeFrequency: 'weekly', priority: 0.6, lastModified: now },
+    { url: canonicalOf('/courses'), changeFrequency: 'weekly', priority: 0.6, lastModified: now },
+    { url: canonicalOf('/store'), changeFrequency: 'weekly', priority: 0.6, lastModified: now },
+    { url: canonicalOf('/blog'), changeFrequency: 'daily', priority: 0.6, lastModified: now },
+    { url: canonicalOf('/audio'), changeFrequency: 'weekly', priority: 0.6, lastModified: now },
   ]
 
-  return [...listItems, ...svcItems, ...programItems, ...healerItems]
+  const courseItems: SitemapItem[] = courses
+    .filter((c) => !!c.slug)
+    .map((c) => ({
+      url: canonicalOf(`/courses/${c.slug}`),
+      lastModified: c.updatedAt ?? now,
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    }))
+
+  const productItems: SitemapItem[] = products
+    .filter((p) => !!p.slug)
+    .map((p) => ({
+      url: canonicalOf(`/store/${p.slug}`),
+      lastModified: p.updatedAt ?? now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+    }))
+
+  const blogItems: SitemapItem[] = blogPosts
+    .filter((b) => !!b.slug)
+    .map((b) => ({
+      url: canonicalOf(`/blog/${b.slug}`),
+      lastModified: b.updatedAt ?? now,
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    }))
+
+  const audioItems: SitemapItem[] = audioTracks
+    .filter((a) => !!a.slug)
+    .map((a) => ({
+      url: canonicalOf(`/audio/${a.slug}`),
+      lastModified: a.createdAt ?? now,
+      changeFrequency: 'monthly' as const,
+      priority: 0.5,
+    }))
+
+  return [...listItems, ...svcItems, ...programItems, ...healerItems, ...courseItems, ...productItems, ...blogItems, ...audioItems]
 }

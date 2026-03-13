@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { validateBookingSlot } from '@/lib/availability'
+import { logActivity } from '@/lib/activity-log'
 import { emailService } from '@/lib/email/email.service'
 import { format } from 'date-fns'
 import { CreateBookingBody } from './types'
@@ -188,6 +189,7 @@ export async function POST(request: NextRequest) {
       }).catch(err => console.error('Async email error:', err))
     }
 
+    logActivity({ userId: session?.user?.id, action: 'booking_created', entityType: 'booking', entityId: booking.id, metadata: { serviceId: booking.serviceId, healerId: booking.healerId } })
     return NextResponse.json({
       success: true,
       data: booking,

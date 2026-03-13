@@ -7,6 +7,7 @@ import { activateProgramEnrollment } from '@/lib/payments/activateProgramEnrollm
 import { activateStoreOrder } from '@/lib/payments/activateStoreOrder'
 import { activateCourseEnrollment } from '@/lib/payments/activateCourseEnrollment'
 import { generateInvoiceForPayment } from '@/lib/invoices/generate'
+import { logActivity } from '@/lib/activity-log'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -77,6 +78,7 @@ export async function POST(req: Request) {
       .catch(e => console.warn('[payments][verify][invoice_failed]', { paymentId: updated.id, error: (e as Error).message }))
   }
   console.log('[payments][verify][success]', { paymentId: updated.id, gatewayPaymentId: paymentId, activation, storeActivation, courseActivation })
+  logActivity({ userId: session.user.id, action: 'payment_verified', entityType: 'payment', entityId: updated.id, metadata: { type: updated.type, amountPaise: updated.amountPaise } })
   return NextResponse.json({ verified: true, payment: { id: updated.id }, activation, storeActivation, courseActivation })
   } catch (err) {
     console.error('[payments][verify][error]', err)

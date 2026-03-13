@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ShoppingCart } from "lucide-react"
 import { useCart } from "@/components/store/CartProvider"
 import SearchBar from "@/components/search/SearchBar"
+import NotificationBell from "@/components/notifications/NotificationBell"
 
 export function Navbar() {
   const { data: session, status } = useSession()
@@ -80,6 +81,7 @@ export function Navbar() {
 
           <div className="flex items-center space-x-4">
             <SearchBar />
+            {session && <NotificationBell />}
             <button
               type="button"
               onClick={() => setIsOpen(true)}

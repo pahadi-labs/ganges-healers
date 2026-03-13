@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { requireVIP } from '@/lib/auth/requireVIP'
 import { z } from 'zod'
+import { logActivity } from '@/lib/activity-log'
 
 // GET /api/community/posts — list posts with pagination (auth required, reading open to all logged-in users)
 export async function GET(request: NextRequest) {
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    logActivity({ userId: session.user!.id, action: 'community_post_created', entityType: 'community_post', entityId: post.id })
     return NextResponse.json({ success: true, data: post }, { status: 201 })
   } catch (error: unknown) {
     const status = (error as { status?: number }).status

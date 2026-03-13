@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { z } from 'zod'
+import { logActivity } from '@/lib/activity-log'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -46,6 +47,7 @@ export async function POST(
       },
     })
 
+    logActivity({ userId: session.user.id, action: isCompleted ? 'course_completed' : 'lesson_completed', entityType: 'course', entityId: course.id, metadata: { progress: updated.progress, lessonOrder: parsed.data.lessonOrder } })
     return NextResponse.json({ progress: updated.progress, status: updated.status })
   } catch (err) {
     console.error('[courses][progress][error]', err)
