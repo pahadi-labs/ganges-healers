@@ -53,6 +53,9 @@ export function Navbar() {
               <Link href="/courses" className="text-sm font-medium hover:text-primary transition-colors focus-ring">
                 Courses
               </Link>
+              <Link href="/audio" className="text-sm font-medium hover:text-primary transition-colors focus-ring">
+                Audio
+              </Link>
               {session && (
                 <Link href="/community" className="text-sm font-medium hover:text-primary transition-colors focus-ring">
                   Community

@@ -420,6 +420,22 @@ model CourseEnrollment {
   @@index([userId, status])
 }
 
+// --- Audio Library ---
+model AudioTrack {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String?  @db.Text
+  category    String
+  audioUrl    String
+  duration    Int      // seconds
+  isPremium   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([category])
+  @@index([isPremium])
+}
+
 // --- Store / E-commerce Models ---
 model ProductCategory {
   id        String    @id @default(cuid())
