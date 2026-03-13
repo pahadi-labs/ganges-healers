@@ -5,8 +5,8 @@ import { resolveInvoiceUrl } from '@/lib/invoices/resolve'
 export const runtime = 'nodejs'        // stream-friendly (valid values: 'edge' | 'nodejs')
 export const dynamic = 'force-dynamic' // avoid caching during dev
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const id = params.id
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const url = await resolveInvoiceUrl(id)
   if (!url) return NextResponse.json({ error: 'not-found' }, { status: 404 })
 
