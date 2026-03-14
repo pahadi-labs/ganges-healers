@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { canonicalOf } from '@/config/site'
+
+export const dynamic = 'force-dynamic'
 import type { Metadata } from 'next'
 import { listProducts } from '@/lib/store/queries'
 import Breadcrumbs from '@/components/seo/Breadcrumbs'
