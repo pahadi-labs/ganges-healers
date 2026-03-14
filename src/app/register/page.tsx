@@ -1,5 +1,12 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { RegisterForm } from "@/components/auth/register-form"
+
+export const metadata: Metadata = {
+  title: "Create Account — Ganges Healers",
+  description:
+    "Sign up for a free Ganges Healers account to book healing sessions, enroll in programs, and access the community.",
+}
 
 export default function RegisterPage() {
   return (

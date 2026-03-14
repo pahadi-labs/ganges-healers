@@ -26,7 +26,8 @@
     "db:test:push": "dotenv -e .env.test -- prisma db push --force-reset",
     "db:test:seed": "dotenv -e .env.test -- tsx prisma/seed.ts",
     "db:fix-plans": "tsx scripts/fix-plans.ts",
-    "simulate:webhook": "tsx scripts/simulate-razorpay-webhook.ts --file fixtures/razorpay.subscription.activated.json"
+    "simulate:webhook": "tsx scripts/simulate-razorpay-webhook.ts --file fixtures/razorpay.subscription.activated.json",
+    "create-admin": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",

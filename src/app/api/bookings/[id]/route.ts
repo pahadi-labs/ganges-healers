@@ -88,7 +88,7 @@ export async function PUT(
       )
     }
 
-    let json: any
+    let json: Record<string, unknown>
     if (process.env.TEST_MODE === '1') {
       const raw = await request.text().catch(() => '')
       console.debug('[TEST_MODE] /api/bookings/[id] PUT raw body:', raw || '(none)')
@@ -287,7 +287,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    let body: any
+    let body: Record<string, unknown>
     if (process.env.TEST_MODE === '1') {
       const raw = await request.text().catch(() => '')
       console.debug('[TEST_MODE] /api/bookings/[id] PATCH raw body:', raw || '(none)')

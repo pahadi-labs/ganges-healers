@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let json: any
+    let json: Record<string, unknown>
     if (process.env.TEST_MODE === '1') {
       const raw = await request.text().catch(() => '')
       console.debug('[TEST_MODE] /api/bookings POST raw body:', raw || '(none)')

@@ -24,6 +24,7 @@ export async function POST(req: Request) {
   }
 
   // Safe parse after verification
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Razorpay webhook payload is untyped external JSON
   let evt: any
   try {
     evt = JSON.parse(bodyText)

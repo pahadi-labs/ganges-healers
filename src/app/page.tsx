@@ -1,6 +1,18 @@
+import type { Metadata } from "next"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
+
+export const metadata: Metadata = {
+  title: "Ganges Healers — Holistic Wellness & Healing Marketplace",
+  description:
+    "Discover experienced healers offering yoga therapy, Reiki, sound healing, meditation coaching, hypnotherapy and more. Book sessions, enroll in programs, and shop wellness products.",
+  openGraph: {
+    title: "Ganges Healers — Holistic Wellness & Healing Marketplace",
+    description:
+      "Book healing sessions, enroll in wellness programs, and shop curated spiritual products.",
+  },
+}
 
 export default function Home() {
   return (

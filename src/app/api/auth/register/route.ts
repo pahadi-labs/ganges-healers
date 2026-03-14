@@ -12,7 +12,7 @@ const registerSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    let body: any
+    let body: Record<string, unknown>
     if (process.env.TEST_MODE === '1') {
       const raw = await request.text().catch(() => '')
       console.debug('[TEST_MODE] /api/auth/register POST raw body:', raw || '(none)')

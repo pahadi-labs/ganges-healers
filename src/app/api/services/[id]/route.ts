@@ -79,6 +79,7 @@ export async function PUT(
     }
 
     const { id } = await params
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- admin body spread into Prisma update
     let body: any
     if (process.env.TEST_MODE === '1') {
       const raw = await request.text().catch(() => '')

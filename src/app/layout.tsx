@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
 import { Toaster } from "@/components/ui/sonner";
-import CartDrawer from "@/components/store/CartDrawer";
+import CartDrawer from "@/components/store/LazyCartDrawer";
 import SkipLink from "@/components/a11y/SkipLink";
 import "./globals.css";
 

@@ -17,11 +17,9 @@ export async function getSitemapItems(): Promise<SitemapItem[]> {
     prisma.program.findMany({
       select: { slug: true, updatedAt: true },
     }) as Promise<Array<{ slug?: string; updatedAt?: Date | null }>>,
-    // Bypass Prisma type constraints to optionally read slug when present
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (prisma as any).healer.findMany({
-      select: { id: true, slug: true, updatedAt: true },
-    }) as Promise<Array<{ id: string; slug?: string; updatedAt?: Date | null }>>,
+    prisma.healer.findMany({
+      select: { id: true, updatedAt: true },
+    }),
     prisma.course.findMany({
       where: { isActive: true },
       select: { slug: true, updatedAt: true },
@@ -61,7 +59,7 @@ export async function getSitemapItems(): Promise<SitemapItem[]> {
 
   const healerItems: SitemapItem[] = healers
     .map((h) => ({
-      url: canonicalOf(`/healers/${(h.slug ?? h.id)}`),
+      url: canonicalOf(`/healers/${h.id}`),
       lastModified: h.updatedAt ?? now,
       changeFrequency: 'weekly',
       priority: 0.8,

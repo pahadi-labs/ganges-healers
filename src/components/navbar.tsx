@@ -1,13 +1,18 @@
 "use client"
 
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { useSession, signIn, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ShoppingCart } from "lucide-react"
 import { useCart } from "@/components/store/CartProvider"
 import SearchBar from "@/components/search/SearchBar"
-import NotificationBell from "@/components/notifications/NotificationBell"
+
+const NotificationBell = dynamic(
+  () => import("@/components/notifications/NotificationBell"),
+  { ssr: false }
+)
 
 export function Navbar() {
   const { data: session, status } = useSession()

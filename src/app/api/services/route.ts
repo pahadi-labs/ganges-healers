@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: status ?? 403 })
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- admin body destructured without Zod
     let body: any
     if (process.env.TEST_MODE === '1') {
       const raw = await request.text().catch(() => '')
