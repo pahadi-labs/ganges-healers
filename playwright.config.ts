@@ -5,7 +5,7 @@ export default defineConfig({
   timeout: 30_000,
   workers: 1, // run serially for deterministic server load (analytics endpoints are heavy)
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3010',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -13,7 +13,7 @@ export default defineConfig({
   webServer: {
     // Start test dev server with fresh schema + seed for deterministic e2e
     command: 'pnpm dev:test',
-    port: 3000,
+    port: 3010,
     reuseExistingServer: false,
     timeout: 120_000,
   },

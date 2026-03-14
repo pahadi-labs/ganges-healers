@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/rbac'
+import { cached } from '@/lib/cache'
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,31 +52,35 @@ export async function GET(request: NextRequest) {
   // Localized escape hatch: Prisma client generated types are verbose; shape validated by construction above.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const prismaWhere: any = where
-    const [services, total] = await Promise.all([
-      prisma.service.findMany({ where: prismaWhere,
-        include: {
-          _count: {
-            select: { bookings: true }
-          }
-        },
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: [
-          { popularity: 'desc' },
-          { name: 'asc' }
-        ]
-      }),
-  prisma.service.count({ where: prismaWhere })
-    ])
+    const cacheKey = `services:${JSON.stringify(prismaWhere)}:${page}:${limit}`
+    const result = await cached(cacheKey, async () => {
+      const [services, total] = await Promise.all([
+        prisma.service.findMany({ where: prismaWhere,
+          include: {
+            _count: {
+              select: { bookings: true }
+            }
+          },
+          skip: (page - 1) * limit,
+          take: limit,
+          orderBy: [
+            { popularity: 'desc' },
+            { name: 'asc' }
+          ]
+        }),
+    prisma.service.count({ where: prismaWhere })
+      ])
+      return { services, total }
+    })
 
     return NextResponse.json({
       success: true,
-      data: services,
+      data: result.services,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit)
+        total: result.total,
+        totalPages: Math.ceil(result.total / limit)
       }
     })
   } catch (error) {
@@ -96,7 +101,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: status ?? 403 })
     }
 
-    const body = await request.json()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- admin body destructured without Zod
+    let body: any
+    if (process.env.TEST_MODE === '1') {
+      const raw = await request.text().catch(() => '')
+      console.debug('[TEST_MODE] /api/services POST raw body:', raw || '(none)')
+      try {
+        body = raw ? JSON.parse(raw) : {}
+      } catch (err) {
+        console.error('[TEST_MODE] JSON parse failed for /api/services POST', err, 'raw:', raw)
+        return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+      }
+    } else {
+      body = await request.json()
+    }
     const { name, description, tagline, category, price, duration, image, mode = 'BOTH', benefits = [] } = body
 
     if (!name || !description || !category || !price || !duration) {

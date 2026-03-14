@@ -1,6 +1,8 @@
 // src/app/api/payments/webhook/route.ts
+// Copilot prompt: Review this webhook handler for Razorpay. Ensure it reads the raw request body, verifies HMAC with RAZORPAY_WEBHOOK_SECRET, returns 401 on mismatch and { ok: true } on success, and logs [webhook] verified with event + IDs. Do not add DB side-effects. Keep response shape stable.
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { applyWebhookSideEffects } from '@/lib/payments/webhook-apply'
 // import { prisma } from '@/lib/prisma'  // uncomment later when you wire DB updates
 
 // NOTE: App Router can read the raw body via req.text()
@@ -22,23 +24,33 @@ export async function POST(req: Request) {
   }
 
   // Safe parse after verification
-  const evt = JSON.parse(bodyText);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Razorpay webhook payload is untyped external JSON
+  let evt: any
+  try {
+    evt = JSON.parse(bodyText)
+  } catch (err) {
+    if (process.env.TEST_MODE === '1') {
+      console.error('[TEST_MODE] JSON parse failed in payments webhook', err, 'raw:', bodyText)
+    }
+    console.error('[webhook] invalid payload')
+    return NextResponse.json({ ok: false, error: 'invalid-payload' }, { status: 400 })
+  }
   const type: string = evt?.event ?? 'unknown';
   const subId: string | undefined = evt?.payload?.subscription?.entity?.id;
   const payId: string | undefined = evt?.payload?.payment?.entity?.id;
 
-  // For now, just log. (We’ll wire DB updates next.)
+  // Verified event logged consistently
   console.log('[webhook] verified', { type, subId, payId });
 
-  // Example: where to hook your logic later
-  // if (type === 'subscription.activated' && subId) {
-  //   await prisma.vIPMembership.updateMany({
-  //     where: { razorpaySubscriptionId: subId },
-  //     data: { status: 'ACTIVE' }
-  //   });
-  // }
-  // if (type === 'subscription.cancelled' && subId) { ... }
-  // if (type === 'payment.captured' && payId) { ... }
+  // Optional, gated side-effects
+  if (process.env.PAYMENT_EVENTS_ENABLED === 'true') {
+    const res = await applyWebhookSideEffects(evt)
+    if (res.applied) {
+      console.log('[webhook][apply]', { type, action: res.action })
+    } else {
+      console.log('[webhook][skip]', { type, reason: res.reason })
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }

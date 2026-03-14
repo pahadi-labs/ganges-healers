@@ -2,12 +2,23 @@
 import { Suspense } from 'react'
 import { prisma } from '@/lib/prisma'
 import ServicesGrid from '@/components/services/ServicesGrid'
+import EmptyState from '@/components/empty/EmptyState'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { clearSearchParams } from '@/lib/utils'
 import ServicesFilter from '@/components/services/ServicesFilter'
 import { Metadata } from 'next'
+import { canonicalOf } from '@/config/site'
+import Breadcrumbs from '@/components/seo/Breadcrumbs'
+import BreadcrumbsLd from '@/components/seo/BreadcrumbsLd'
+import { makeServicesIndexCrumbs } from '@/lib/seo/breadcrumbs'
 
-export const metadata: Metadata = {
-  title: 'Healing Services | Ganges Healers',
-  description: 'Explore our range of healing services including Reiki, Hypnotherapy, Yoga Therapy, and more.'
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: 'Services | Ganges Healers',
+    description: 'Explore our range of healing services including Reiki, Hypnotherapy, Yoga Therapy, and more.',
+    alternates: { canonical: canonicalOf('/services') },
+  }
 }
 
 // Keep this dynamic to ensure fresh filtering (or switch to awaited searchParams param style)
@@ -124,6 +135,10 @@ export default async function ServicesPage({
       </div>
       
       <div className="container mx-auto px-4 py-8">
+        {(() => { const crumbs = makeServicesIndexCrumbs(); return (<>
+          <Breadcrumbs crumbs={crumbs} />
+          <BreadcrumbsLd crumbs={crumbs} />
+        </>) })()}
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters Sidebar */}
           <aside className="lg:w-64">
@@ -135,9 +150,19 @@ export default async function ServicesPage({
           {/* Services Grid */}
           <main className="flex-1">
             {services.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500 text-lg">No services found matching your criteria.</p>
-              </div>
+              <EmptyState
+                title="No services yet"
+                subtitle="Check back soon."
+                action={(() => {
+                  const hasFilters = Boolean(params?.q)
+                  if (!hasFilters) return null
+                  const sp = new URLSearchParams(Object.entries(params).flatMap(([k,v]) => Array.isArray(v) ? v.map((vv) => [k, String(vv)]) : v ? [[k, String(v)]] : []))
+                  const href = clearSearchParams('/services' + (sp.toString() ? `?${sp.toString()}` : ''), ['q'])
+                  return (
+                    <Link href={href}><Button variant="secondary">Clear filters</Button></Link>
+                  )
+                })()}
+              />
             ) : (
               <>
                 <div className="mb-4 flex justify-between items-center">

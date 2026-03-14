@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { validateBookingSlot } from '@/lib/availability'
+import { logActivity } from '@/lib/activity-log'
 import { emailService } from '@/lib/email/email.service'
 import { format } from 'date-fns'
 import { CreateBookingBody } from './types'
@@ -44,7 +45,8 @@ export async function GET(request: NextRequest) {
         service: {
           select: {
             name: true,
-            category: true
+            category: true,
+            slug: true,
           }
         },
         payment: {
@@ -76,14 +78,29 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user?.id) {
+    // In TEST_MODE, allow an override via header for deterministic E2E API calls
+    const testUserId = (process.env.TEST_MODE === '1' || process.env.NEXT_PUBLIC_TEST_MODE === '1') ? request.headers.get('x-test-user-id') : null
+    const userId = session?.user?.id || testUserId
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    const json = await request.json()
+    let json: Record<string, unknown>
+    if (process.env.TEST_MODE === '1') {
+      const raw = await request.text().catch(() => '')
+      console.debug('[TEST_MODE] /api/bookings POST raw body:', raw || '(none)')
+      try {
+        json = raw ? JSON.parse(raw) : {}
+      } catch (err) {
+        console.error('[TEST_MODE] JSON parse failed for /api/bookings POST', err, 'raw:', raw)
+        return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+      }
+    } else {
+      json = await request.json()
+    }
     const parsed = CreateBookingBody.safeParse(json)
     if (!parsed.success) {
       return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
@@ -126,7 +143,7 @@ export async function POST(request: NextRequest) {
     // Create booking
     const booking = await prisma.booking.create({
       data: {
-        userId: session.user.id,
+        userId,
         healerId,
         serviceId,
         scheduledAt: scheduledDate,
@@ -162,8 +179,8 @@ export async function POST(request: NextRequest) {
       const scheduled = new Date(booking.scheduledAt)
       emailService.sendBookingConfirmation({
         // Assuming email exists on session.user; if not present in type, cast minimally
-        to: (session.user as { email?: string }).email || '',
-        userName: session.user.name || 'User',
+        to: (session?.user as { email?: string } | undefined)?.email || '',
+        userName: session?.user?.name || 'User',
         serviceName,
         healerName,
         date: format(scheduled, 'MMMM d, yyyy'),
@@ -172,6 +189,7 @@ export async function POST(request: NextRequest) {
       }).catch(err => console.error('Async email error:', err))
     }
 
+    logActivity({ userId: session?.user?.id, action: 'booking_created', entityType: 'booking', entityId: booking.id, metadata: { serviceId: booking.serviceId, healerId: booking.healerId } })
     return NextResponse.json({
       success: true,
       data: booking,

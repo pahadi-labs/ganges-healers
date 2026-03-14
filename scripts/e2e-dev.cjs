@@ -28,9 +28,9 @@ try {
   run('prisma db push --force-reset');
   console.log('[e2e-dev] seeding database');
   run('tsx prisma/seed.ts');
-  console.log('[e2e-dev] starting Next dev server');
+  console.log('[e2e-dev] starting Next dev server on :3010');
   // Use standard dev (not turbopack) for faster reliable cold start in CI
-  run('next dev');
+  run('next dev -p 3010');
 } catch (e) {
   console.error('[e2e-dev] failed', e);
   process.exit(1);

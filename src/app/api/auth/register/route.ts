@@ -12,7 +12,19 @@ const registerSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    let body: Record<string, unknown>
+    if (process.env.TEST_MODE === '1') {
+      const raw = await request.text().catch(() => '')
+      console.debug('[TEST_MODE] /api/auth/register POST raw body:', raw || '(none)')
+      try {
+        body = raw ? JSON.parse(raw) : {}
+      } catch (err) {
+        console.error('[TEST_MODE] JSON parse failed for /api/auth/register POST', err, 'raw:', raw)
+        return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+      }
+    } else {
+      body = await request.json()
+    }
     
     // Validate input
     const validatedData = registerSchema.parse(body)

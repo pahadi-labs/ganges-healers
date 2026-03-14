@@ -1,0 +1,29 @@
+// src/app/api/invoices/[id]/download/route.ts
+import { NextResponse } from 'next/server'
+import { resolveInvoiceUrl } from '@/lib/invoices/resolve'
+
+export const runtime = 'nodejs'        // stream-friendly (valid values: 'edge' | 'nodejs')
+export const dynamic = 'force-dynamic' // avoid caching during dev
+
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const url = await resolveInvoiceUrl(id)
+  if (!url) return NextResponse.json({ error: 'not-found' }, { status: 404 })
+
+  const inline = new URL(req.url).searchParams.get('inline') === '1'
+
+  const upstream = await fetch(url, { cache: 'no-store' })
+  if (!upstream.ok || !upstream.body) {
+    return NextResponse.json({ error: 'fetch-failed' }, { status: 502 })
+  }
+
+  const headers = new Headers()
+  headers.set('Content-Type', 'application/pdf')
+  headers.set(
+    'Content-Disposition',
+    `${inline ? 'inline' : 'attachment'}; filename="invoice-${id}.pdf"`
+  )
+  headers.set('Cache-Control', 'no-store')
+
+  return new Response(upstream.body, { status: 200, headers })
+}

@@ -79,7 +79,20 @@ export async function PUT(
     }
 
     const { id } = await params
-    const body = await request.json()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- admin body spread into Prisma update
+    let body: any
+    if (process.env.TEST_MODE === '1') {
+      const raw = await request.text().catch(() => '')
+      console.debug('[TEST_MODE] /api/services/[id] PUT raw body:', raw || '(none)')
+      try {
+        body = raw ? JSON.parse(raw) : {}
+      } catch (err) {
+        console.error('[TEST_MODE] JSON parse failed for /api/services/[id] PUT', err, 'raw:', raw)
+        return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+      }
+    } else {
+      body = await request.json()
+    }
 
     const service = await prisma.service.update({
       where: { id },

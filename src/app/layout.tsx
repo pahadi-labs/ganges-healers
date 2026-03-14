@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
 import { Toaster } from "@/components/ui/sonner";
+import CartDrawer from "@/components/store/LazyCartDrawer";
+import SkipLink from "@/components/a11y/SkipLink";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,10 +34,12 @@ export default function RootLayout({
       >
         <Providers>
           <div className="min-h-screen bg-background">
+            <SkipLink />
             <Navbar />
-            <main>{children}</main>
+            <main id="main-content">{children}</main>
           </div>
           <Toaster />
+          <CartDrawer />
         </Providers>
       </body>
     </html>
