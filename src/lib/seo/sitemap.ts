@@ -9,32 +9,36 @@ export type SitemapItem = {
 }
 
 export async function getSitemapItems(): Promise<SitemapItem[]> {
-  // Query minimal fields only; tolerate absent columns by using loose typing
+  // Helper: run a query and return [] if the table doesn't exist yet (P2021)
+  async function safe<T>(fn: () => Promise<T[]>): Promise<T[]> {
+    try { return await fn() } catch { return [] }
+  }
+
   const [services, programs, healers, courses, products, blogPosts, audioTracks] = await Promise.all([
-    prisma.service.findMany({
+    safe(() => prisma.service.findMany({
       select: { slug: true, updatedAt: true },
-    }) as Promise<Array<{ slug?: string; updatedAt?: Date | null }>>,
-    prisma.program.findMany({
+    })) as Promise<Array<{ slug?: string; updatedAt?: Date | null }>>,
+    safe(() => prisma.program.findMany({
       select: { slug: true, updatedAt: true },
-    }) as Promise<Array<{ slug?: string; updatedAt?: Date | null }>>,
-    prisma.healer.findMany({
+    })) as Promise<Array<{ slug?: string; updatedAt?: Date | null }>>,
+    safe(() => prisma.healer.findMany({
       select: { id: true, updatedAt: true },
-    }),
-    prisma.course.findMany({
+    })),
+    safe(() => prisma.course.findMany({
       where: { isActive: true },
       select: { slug: true, updatedAt: true },
-    }),
-    prisma.product.findMany({
+    })),
+    safe(() => prisma.product.findMany({
       where: { isActive: true },
       select: { slug: true, updatedAt: true },
-    }),
-    prisma.blogPost.findMany({
+    })),
+    safe(() => prisma.blogPost.findMany({
       where: { published: true },
       select: { slug: true, updatedAt: true },
-    }),
-    prisma.audioTrack.findMany({
+    })),
+    safe(() => prisma.audioTrack.findMany({
       select: { slug: true, createdAt: true },
-    }),
+    })),
   ])
 
   const now = new Date()
