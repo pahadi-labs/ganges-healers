@@ -11,18 +11,31 @@ export const metadata: Metadata = {
 }
 
 export default async function BlogPage() {
-  const posts = await prisma.blogPost.findMany({
-    where: { published: true },
-    orderBy: { createdAt: 'desc' },
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-      excerpt: true,
-      imageUrl: true,
-      createdAt: true,
-    },
-  })
+  let posts: {
+    id: string
+    slug: string
+    title: string
+    excerpt: string | null
+    imageUrl: string | null
+    createdAt: Date
+  }[] = []
+
+  try {
+    posts = await prisma.blogPost.findMany({
+      where: { published: true },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        excerpt: true,
+        imageUrl: true,
+        createdAt: true,
+      },
+    })
+  } catch (error) {
+    console.error('Blog fetch failed during build:', error)
+  }
 
   return (
     <div className="container mx-auto p-6">
