@@ -34,11 +34,15 @@ async function checkRedis(): Promise<{ status: 'ok' | 'unavailable' | 'error'; l
 async function checkQueues(): Promise<{ status: 'ok' | 'unavailable' | 'error'; counts?: Record<string, number> }> {
   if (!process.env.REDIS_URL) return { status: 'unavailable' }
   try {
-    const { emailQueue, notificationQueue, activityQueue } = await import('@/lib/queues/jobs')
+    const { getEmailQueue, getNotificationQueue, getActivityQueue } = await import('@/lib/queues/jobs')
+    const eq = getEmailQueue()
+    const nq = getNotificationQueue()
+    const aq = getActivityQueue()
+    if (!eq || !nq || !aq) return { status: 'unavailable' }
     const [email, notification, activity] = await Promise.all([
-      emailQueue.getJobCounts('waiting', 'active', 'failed'),
-      notificationQueue.getJobCounts('waiting', 'active', 'failed'),
-      activityQueue.getJobCounts('waiting', 'active', 'failed'),
+      eq.getJobCounts('waiting', 'active', 'failed'),
+      nq.getJobCounts('waiting', 'active', 'failed'),
+      aq.getJobCounts('waiting', 'active', 'failed'),
     ])
     return {
       status: 'ok',

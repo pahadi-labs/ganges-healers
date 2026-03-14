@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq'
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379'
+const REDIS_URL = process.env.REDIS_URL
 
 /** Parse Redis URL into connection options for BullMQ */
 function parseRedisUrl(url: string) {
@@ -18,40 +18,70 @@ function parseRedisUrl(url: string) {
   }
 }
 
-const redisOpts = parseRedisUrl(REDIS_URL)
+// ─── Lazy queue singletons (only connect when REDIS_URL is set) ─
+
+let _emailQueue: Queue | null = null
+let _notificationQueue: Queue | null = null
+let _activityQueue: Queue | null = null
+
+function getRedisOpts() {
+  if (!REDIS_URL) return null
+  return parseRedisUrl(REDIS_URL)
+}
 
 /** Email queue — booking confirmations, cancellations, reminders, invoices */
-export const emailQueue = new Queue('email', {
-  connection: redisOpts,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 2000 },
-    removeOnComplete: 100,
-    removeOnFail: 200,
-  },
-})
+export function getEmailQueue(): Queue | null {
+  if (!_emailQueue) {
+    const opts = getRedisOpts()
+    if (!opts) return null
+    _emailQueue = new Queue('email', {
+      connection: opts,
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+        removeOnComplete: 100,
+        removeOnFail: 200,
+      },
+    })
+  }
+  return _emailQueue
+}
 
 /** Notification queue — create and push notifications to users */
-export const notificationQueue = new Queue('notification', {
-  connection: redisOpts,
-  defaultJobOptions: {
-    attempts: 2,
-    backoff: { type: 'fixed', delay: 1000 },
-    removeOnComplete: 100,
-    removeOnFail: 200,
-  },
-})
+export function getNotificationQueue(): Queue | null {
+  if (!_notificationQueue) {
+    const opts = getRedisOpts()
+    if (!opts) return null
+    _notificationQueue = new Queue('notification', {
+      connection: opts,
+      defaultJobOptions: {
+        attempts: 2,
+        backoff: { type: 'fixed', delay: 1000 },
+        removeOnComplete: 100,
+        removeOnFail: 200,
+      },
+    })
+  }
+  return _notificationQueue
+}
 
 /** Activity log queue — async activity logging */
-export const activityQueue = new Queue('activity', {
-  connection: redisOpts,
-  defaultJobOptions: {
-    attempts: 2,
-    backoff: { type: 'fixed', delay: 1000 },
-    removeOnComplete: 50,
-    removeOnFail: 100,
-  },
-})
+export function getActivityQueue(): Queue | null {
+  if (!_activityQueue) {
+    const opts = getRedisOpts()
+    if (!opts) return null
+    _activityQueue = new Queue('activity', {
+      connection: opts,
+      defaultJobOptions: {
+        attempts: 2,
+        backoff: { type: 'fixed', delay: 1000 },
+        removeOnComplete: 50,
+        removeOnFail: 100,
+      },
+    })
+  }
+  return _activityQueue
+}
 
 // ─── Job type definitions ───────────────────────────────────────
 
@@ -81,6 +111,7 @@ export interface ActivityJobData {
 let redisAvailable: boolean | null = null
 
 async function isRedisAvailable(): Promise<boolean> {
+  if (!REDIS_URL) return false
   if (redisAvailable !== null) return redisAvailable
   try {
     const IORedis = (await import('ioredis')).default
@@ -98,20 +129,26 @@ async function isRedisAvailable(): Promise<boolean> {
 /** Enqueue an email job. Returns false if Redis is unavailable (caller should send inline). */
 export async function enqueueEmail(data: EmailJobData): Promise<boolean> {
   if (!(await isRedisAvailable())) return false
-  await emailQueue.add(data.type, data)
+  const q = getEmailQueue()
+  if (!q) return false
+  await q.add(data.type, data)
   return true
 }
 
 /** Enqueue a notification creation job. Returns false if Redis is unavailable. */
 export async function enqueueNotification(data: NotificationJobData): Promise<boolean> {
   if (!(await isRedisAvailable())) return false
-  await notificationQueue.add('create', data)
+  const q = getNotificationQueue()
+  if (!q) return false
+  await q.add('create', data)
   return true
 }
 
 /** Enqueue an activity log job. Returns false if Redis is unavailable. */
 export async function enqueueActivity(data: ActivityJobData): Promise<boolean> {
   if (!(await isRedisAvailable())) return false
-  await activityQueue.add('log', data)
+  const q = getActivityQueue()
+  if (!q) return false
+  await q.add('log', data)
   return true
 }
