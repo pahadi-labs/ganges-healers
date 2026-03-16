@@ -27,6 +27,10 @@ model User {
   communityComments  CommunityComment[]
   communityLikes     CommunityLike[]
   communityPosts     CommunityPost[]
+  deletedPosts       CommunityPost[]     @relation("PostDeletedBy")
+  deletedComments    CommunityComment[]  @relation("CommentDeletedBy")
+  reportsFiled       CommunityReport[]   @relation("ReportAuthor")
+  reportsReviewed    CommunityReport[]   @relation("ReportReviewer")
   courseEnrollments  CourseEnrollment[]
   healer             Healer?
   notifications      Notification[]
@@ -36,6 +40,7 @@ model User {
   sessions           Session[]
   sessionCredits     SessionCredit[]
   memberships        VIPMembership[]
+  reviews            Review[]
 }
 
 model Healer {
@@ -55,6 +60,7 @@ model Healer {
   bookings           Booking[]
   user               User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   programEnrollments ProgramEnrollment[]
+  reviews            Review[]
 }
 
 model Service {
@@ -76,6 +82,7 @@ model Service {
   updatedAt    DateTime                 @updatedAt
   bookings     Booking[]
   products     Product[]
+  reviews      Review[]
 }
 
 model Booking {
@@ -94,6 +101,7 @@ model Booking {
   service     Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   user        User          @relation("UserBookings", fields: [userId], references: [id], onDelete: Cascade)
   payment     Payment?
+  review      Review?
 
   @@index([userId, scheduledAt(sort: Desc)])
   @@index([healerId, scheduledAt, status])
@@ -260,32 +268,79 @@ model CommunityAccess {
   @@index([userId, level])
 }
 
-model CommunityPost {
+model CommunityTopic {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  name        String
+  description String?
+  order       Int             @default(0)
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  posts       CommunityPost[]
+
+  @@index([isActive, order])
+}
+
+model CommunityTag {
   id        String             @id @default(cuid())
-  userId    String
-  title     String
-  content   String
+  slug      String             @unique
+  name      String
   createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-  comments  CommunityComment[]
-  likes     CommunityLike[]
-  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  posts     CommunityPostTag[]
+}
+
+model CommunityPostTag {
+  postId String
+  tagId  String
+  post   CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    CommunityTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@index([tagId])
+}
+
+model CommunityPost {
+  id           String                   @id @default(cuid())
+  userId       String
+  topicId      String?
+  title        String
+  content      String
+  isPinned     Boolean                  @default(false)
+  deletedAt    DateTime?
+  deletedById  String?
+  searchVector Unsupported("tsvector")?
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  comments     CommunityComment[]
+  likes        CommunityLike[]
+  tags         CommunityPostTag[]
+  deletedBy    User?                    @relation("PostDeletedBy", fields: [deletedById], references: [id])
+  topic        CommunityTopic?          @relation(fields: [topicId], references: [id])
+  user         User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([createdAt(sort: Desc)])
+  @@index([topicId])
+  @@index([isPinned])
+  @@index([deletedAt])
 }
 
 model CommunityComment {
-  id        String        @id @default(cuid())
-  postId    String
-  userId    String
-  content   String
-  createdAt DateTime      @default(now())
-  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String        @id @default(cuid())
+  postId      String
+  userId      String
+  content     String
+  deletedAt   DateTime?
+  deletedById String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedBy   User?         @relation("CommentDeletedBy", fields: [deletedById], references: [id])
+  post        CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([postId])
   @@index([userId])
+  @@index([deletedAt])
 }
 
 model CommunityLike {
@@ -296,6 +351,24 @@ model CommunityLike {
   user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([postId, userId])
+  @@index([userId])
+}
+
+model CommunityReport {
+  id          String   @id @default(cuid())
+  userId      String
+  targetType  String   // 'post' | 'comment'
+  targetId    String
+  reason      String
+  status      String   @default("pending") // 'pending' | 'reviewed' | 'dismissed'
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime @default(now())
+  reviewer    User?    @relation("ReportReviewer", fields: [reviewedBy], references: [id])
+  user        User     @relation("ReportAuthor", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([targetType, targetId])
   @@index([userId])
 }
 
@@ -495,6 +568,26 @@ model ActivityLog {
   @@index([userId])
   @@index([entityType, entityId])
   @@index([createdAt(sort: Desc)])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  bookingId String   @unique
+  userId    String
+  serviceId String
+  healerId  String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  healer  Healer  @relation(fields: [healerId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId, createdAt(sort: Desc)])
+  @@index([healerId])
+  @@index([userId])
 }
 
 enum Role {

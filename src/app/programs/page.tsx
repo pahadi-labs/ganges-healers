@@ -7,50 +7,127 @@ import { makeProgramsIndexCrumbs } from '@/lib/seo/breadcrumbs'
 import EmptyState from '@/components/empty/EmptyState'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { clearSearchParams } from '@/lib/utils'
+import { Clock, CalendarDays, Layers, ArrowRight } from 'lucide-react'
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: 'Programs | Ganges Healers',
-    description: 'Guided multi-session programs to support your healing journey.',
+    title: 'Transformational Healing Programs | Ganges Healers',
+    description: 'Structured multi-session healing programs designed to create lasting emotional, mental, and behavioral transformation.',
     alternates: { canonical: canonicalOf('/programs') },
   }
 }
 
-export default async function ProgramsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> } = {}) {
+export default async function ProgramsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = (await searchParams) || {}
-  const { items } = await listPrograms({ limit: 20 })
+  const q = typeof sp?.q === 'string' ? sp.q : undefined
+  const { items } = await listPrograms({ limit: 20, q })
+  const crumbs = makeProgramsIndexCrumbs()
   return (
-    <div className="container mx-auto p-6">
-      {(() => { const crumbs = makeProgramsIndexCrumbs(); return (<>
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
+        <div className="container mx-auto px-4 py-16">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            Transformational Healing Programs
+          </h1>
+          <p className="text-xl text-emerald-100 max-w-2xl">
+            Structured multi-session journeys designed to create lasting emotional,
+            mental, and behavioral change.
+          </p>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-8">
         <Breadcrumbs crumbs={crumbs} />
         <BreadcrumbsLd crumbs={crumbs} />
-      </>) })()}
-      <h1 className="text-2xl font-semibold mb-4">Programs</h1>
-      {items.length === 0 ? (
-        <EmptyState
-          title="No programs found"
-          subtitle="Try a different search or filter."
-          action={(() => {
-            const hasFilters = Boolean(sp?.q || sp?.serviceSlug)
-            if (!hasFilters) return null
-            const qs = new URLSearchParams(Object.entries(sp).flatMap(([k,v]) => Array.isArray(v) ? v.map((vv) => [k, String(vv)]) : v ? [[k, String(v)]] : []))
-            const href = clearSearchParams('/programs' + (qs.toString() ? `?${qs.toString()}` : ''), ['q','serviceSlug'])
-            return <Link href={href}><Button variant="secondary">Clear filters</Button></Link>
-          })()}
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {items.map((p) => (
-            <a key={p.id} href={`/programs/${p.slug}`} className="block rounded border p-4 hover:shadow-sm focus-ring">
-              <div className="font-medium text-lg">{p.title}</div>
-              <div className="text-sm text-muted-foreground mt-1">{p.shortDescription}</div>
-              <div className="mt-2 text-sm">Sessions: {p.sessionsCount}</div>
-              <div className="mt-1 font-semibold">₹{(p.pricePaise / 100).toFixed(2)}</div>
-            </a>
-          ))}
-        </div>
-      )}
+
+        {/* Search */}
+        <form className="mb-8 max-w-md" action="/programs">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              name="q"
+              defaultValue={q}
+              placeholder="Search programs..."
+              className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
+            />
+            <Button type="submit">Search</Button>
+          </div>
+        </form>
+
+        {items.length === 0 ? (
+          <EmptyState
+            title="No programs found"
+            subtitle="Try a different search or check back soon."
+            action={(() => {
+              const hasFilters = Boolean(sp?.q || sp?.serviceSlug)
+              if (!hasFilters) return null
+              const qs = new URLSearchParams(Object.entries(sp).flatMap(([k,v]) => Array.isArray(v) ? v.map((vv) => [k, String(vv)]) : v ? [[k, String(v)]] : []))
+              const href = clearSearchParams('/programs' + (qs.toString() ? `?${qs.toString()}` : ''), ['q','serviceSlug'])
+              return <Link href={href}><Button variant="secondary">Clear filters</Button></Link>
+            })()}
+          />
+        ) : (
+          <>
+            <p className="text-gray-600 mb-6">
+              Showing {items.length} program{items.length !== 1 ? 's' : ''}
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {items.map((p) => {
+                const totalWeeks = p.sessionsPerWeek > 0 ? Math.ceil(p.sessionsCount / p.sessionsPerWeek) : null
+                return (
+                  <Link key={p.id} href={`/programs/${p.slug}`} className="group">
+                    <Card className="h-full hover:shadow-lg transition-all duration-300 overflow-hidden">
+                      {/* Gradient banner */}
+                      <div className="h-3 bg-gradient-to-r from-emerald-500 to-teal-500" />
+                      <CardHeader>
+                        <CardTitle className="text-xl group-hover:text-emerald-600 transition-colors">
+                          {p.title}
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                          {p.shortDescription}
+                        </p>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {/* Program structure */}
+                        <div className="flex flex-wrap gap-3 text-sm text-gray-600">
+                          <div className="flex items-center gap-1">
+                            <Layers className="w-4 h-4 text-emerald-600" />
+                            <span>{p.sessionsCount} sessions</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-4 h-4 text-emerald-600" />
+                            <span>{p.durationMinutes} min each</span>
+                          </div>
+                          {totalWeeks && (
+                            <div className="flex items-center gap-1">
+                              <CalendarDays className="w-4 h-4 text-emerald-600" />
+                              <span>{totalWeeks} week{totalWeeks !== 1 ? 's' : ''}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Price and CTA */}
+                        <div className="flex items-center justify-between pt-2 border-t">
+                          <span className="text-2xl font-bold text-emerald-600">
+                            ₹{(p.pricePaise / 100).toLocaleString('en-IN')}
+                          </span>
+                          <span className="text-emerald-600 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1 text-sm font-medium">
+                            View Program
+                            <ArrowRight className="w-4 h-4" />
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

@@ -6,6 +6,8 @@ export type ProgramListItem = {
   title: string
   shortDescription: string
   sessionsCount: number
+  sessionsPerWeek: number
+  durationMinutes: number
   pricePaise: number
   heroImageUrl: string | null
   ratingAvg: number | null
@@ -44,6 +46,8 @@ export async function listPrograms(params?: { serviceSlug?: string; q?: string; 
       description: true,
       pricePaise: true,
       totalSessions: true,
+      sessionsPerWeek: true,
+      durationMinutes: true,
     },
   })
 
@@ -53,6 +57,8 @@ export async function listPrograms(params?: { serviceSlug?: string; q?: string; 
     title: r.title,
     shortDescription: (r.description || '').slice(0, 180),
     sessionsCount: r.totalSessions,
+    sessionsPerWeek: r.sessionsPerWeek,
+    durationMinutes: r.durationMinutes,
     pricePaise: r.pricePaise,
     heroImageUrl: null,
     ratingAvg: null,
@@ -71,6 +77,8 @@ export async function getProgramBySlug(slug: string): Promise<ProgramDetail | nu
       description: true,
       pricePaise: true,
       totalSessions: true,
+      sessionsPerWeek: true,
+      durationMinutes: true,
     },
   })
   if (!r) return null
@@ -81,6 +89,8 @@ export async function getProgramBySlug(slug: string): Promise<ProgramDetail | nu
     shortDescription: (r.description || '').slice(0, 180),
     longDescription: r.description,
     sessionsCount: r.totalSessions,
+    sessionsPerWeek: r.sessionsPerWeek,
+    durationMinutes: r.durationMinutes,
     pricePaise: r.pricePaise,
     heroImageUrl: null,
     ratingAvg: null,

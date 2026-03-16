@@ -4,8 +4,16 @@ import Link from "next/link"
 import { prisma } from "@/lib/prisma"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import HealerBookAction from "../../../components/features/services/HealerBookAction"
+import { Badge } from "@/components/ui/badge"
+import { Calendar, TrendingUp } from "lucide-react"
+import HealerCard from "@/components/features/services/HealerCard"
 import BookingAutoOpen from "@/components/features/booking/BookingAutoOpen"
+import ServiceHowItWorks from "@/components/features/services/ServiceHowItWorks"
+import ServiceRefundPolicy from "@/components/features/services/ServiceRefundPolicy"
+import ReviewsSection from "@/components/features/services/ReviewsSection"
+import RelatedServices from "@/components/features/services/RelatedServices"
+import ServiceFAQ from "@/components/features/services/ServiceFAQ"
+import InternalLinks from "@/components/features/services/InternalLinks"
 import type { Metadata } from 'next'
 import { canonicalOf } from '@/config/site'
 import ServiceLd from '@/components/seo/ServiceLd'
@@ -66,6 +74,7 @@ export default async function ServiceDetailPage({
       price: true,
       duration: true,
       category: true,
+      mode: true,
       benefits: true,
       _count: { select: { bookings: true } },
     },
@@ -74,45 +83,104 @@ export default async function ServiceDetailPage({
   if (!service) notFound()
 
   const crumbs = makeServiceCrumbs(slug, service?.name)
-
   const key = specializationKey(service.name)
-  const healers = await prisma.healer.findMany({
-    where: { specializations: { has: key } },
-    select: {
-      id: true,
-      bio: true,
-      experienceYears: true,
-      rating: true,
-      specializations: true,
-      user: { select: { name: true, image: true } },
-    },
-    orderBy: { experienceYears: 'desc' },
-  })
 
-  type HealerResult = typeof healers[number]
+  // Fetch healers, reviews, and monthly booking count in parallel
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
+  const [healers, reviews, monthlyBookings] = await Promise.all([
+    prisma.healer.findMany({
+      where: { specializations: { has: key } },
+      select: {
+        id: true,
+        bio: true,
+        experienceYears: true,
+        rating: true,
+        specializations: true,
+        isVerified: true,
+        availability: true,
+        user: { select: { name: true, image: true } },
+        _count: { select: { reviews: true } },
+      },
+      orderBy: { experienceYears: 'desc' },
+    }),
+    prisma.review.findMany({
+      where: { serviceId: service.id },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        createdAt: true,
+        user: { select: { name: true } },
+      },
+    }),
+    prisma.booking.count({
+      where: {
+        serviceId: service.id,
+        createdAt: { gte: monthStart },
+      },
+    }),
+  ])
+
+  // Compute review stats for SEO schema
+  const reviewAgg = await prisma.review.aggregate({
+    where: { serviceId: service.id },
+    _avg: { rating: true },
+    _count: { rating: true },
+  })
+  const avgRating = reviewAgg._avg.rating
+  const totalReviews = reviewAgg._count.rating
+
+  // Prepare healer data for client components
+  const healerData = healers.map((h) => ({
+    ...h,
+    availability: h.availability as Record<string, { start: string; end: string }> | null,
+    rating: h.rating ?? 0,
+    reviewCount: h._count.reviews,
+  }))
+
+  // Category-specific long-form content
+  const categoryLabel = (service.category ?? "General").replace(/_/g, " ")
+  const altText = `${service.name} healing session — ${categoryLabel.toLowerCase()} for wellness and transformation`
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
+    <div className="container mx-auto px-4 py-8 space-y-10">
       <Breadcrumbs crumbs={crumbs} />
       <BreadcrumbsLd crumbs={crumbs} />
-      <ServiceLd service={{ slug: service.slug, title: service.name, shortDescription: service.description ?? undefined, pricePaise: typeof service.price === 'number' ? service.price * 100 : undefined, imageUrl: service.image ?? undefined }} />
-      {openBooking && healers[0] ? (
+      <ServiceLd
+        service={{
+          slug: service.slug,
+          title: service.name,
+          shortDescription: service.description ?? undefined,
+          pricePaise: typeof service.price === 'number' ? service.price * 100 : undefined,
+          ratingAvg: avgRating ?? undefined,
+          ratingCount: totalReviews > 0 ? totalReviews : undefined,
+          imageUrl: service.image ?? undefined,
+        }}
+      />
+
+      {openBooking && healerData[0] ? (
         <BookingAutoOpen
           enabled={true}
           programSlug={programSlug}
           productSlug={productSlug}
           serviceSlug={service.slug}
-          healer={{ id: healers[0].id, name: healers[0].user?.name ?? 'Healer', experienceYears: healers[0].experienceYears, rating: healers[0].rating ?? 5 }}
+          healer={{ id: healerData[0].id, name: healerData[0].user?.name ?? 'Healer', experienceYears: healerData[0].experienceYears, rating: healerData[0].rating ?? 5 }}
           serviceId={service.id}
           serviceName={service.name}
         />
       ) : null}
+
+      {/* ── Hero: Service Info ─────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="overflow-hidden">
           <div className="relative h-64 w-full">
             <Image
               src={service.image ?? "/vercel.svg"}
-              alt={service.name}
+              alt={altText}
               fill
               className="object-cover"
             />
@@ -126,67 +194,108 @@ export default async function ServiceDetailPage({
             <div className="flex flex-wrap gap-4 text-sm text-gray-600">
               <span><strong className="text-gray-800">₹{service.price}</strong> / session</span>
               <span>Duration: {service.duration} min</span>
-              <span>Bookings: {service._count.bookings}</span>
+              <span>{service._count.bookings} total bookings</span>
+            </div>
+
+            {/* Urgency signals */}
+            <div className="flex flex-wrap gap-3">
+              {monthlyBookings > 0 && (
+                <Badge variant="secondary" className="gap-1">
+                  <TrendingUp className="h-3 w-3" />
+                  Booked {monthlyBookings} times this month
+                </Badge>
+              )}
+              {healers.length > 0 && (
+                <Badge variant="secondary" className="gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {healers.length} healer{healers.length > 1 ? "s" : ""} available
+                </Badge>
+              )}
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-6 space-y-3">
-            <h2 className="text-xl font-semibold">About this service</h2>
-            <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1">
-              <li>Certified healers with practical experience</li>
-              <li>Slots available 10:00–20:00 IST</li>
-              <li>30‑minute increments • Reschedule ≥24h</li>
-            </ul>
-            {Array.isArray(service.benefits) && service.benefits.length > 0 && (
-              <div className="pt-2">
-                <h3 className="font-medium text-sm mb-1">Potential Benefits</h3>
-                <ul className="list-disc pl-5 text-xs text-gray-600 space-y-0.5">
-                  {(service.benefits as string[]).slice(0,6).map(b => (
-                    <li key={b}>{b}</li>
-                  ))}
-                </ul>
+
+        <div className="space-y-4">
+          {/* Service-specific content */}
+          <Card>
+            <CardContent className="p-6 space-y-4">
+              <h2 className="text-xl font-semibold">What is {service.name}?</h2>
+              <p className="text-sm text-gray-600 leading-relaxed">{service.description}</p>
+
+              {Array.isArray(service.benefits) && service.benefits.length > 0 && (
+                <div>
+                  <h3 className="font-medium text-sm mb-2">Benefits of {service.name}</h3>
+                  <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1">
+                    {(service.benefits as string[]).slice(0, 8).map((b) => (
+                      <li key={b}>{b}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div>
+                <h3 className="font-medium text-sm mb-2">Who is this session for?</h3>
+                <p className="text-sm text-gray-600">
+                  This session is ideal for anyone seeking support with {categoryLabel.toLowerCase()} related
+                  challenges. Whether you are new to healing or have prior experience, our practitioners
+                  tailor each session to your specific needs and goals.
+                </p>
               </div>
-            )}
-            <div className="pt-2">
-              <Link href="/services"><Button variant="outline" size="sm">Browse all services</Button></Link>
-              <Link href={`/healers?serviceSlug=${service.slug}`} className="ml-2"><Button variant="outline" size="sm">View all healers</Button></Link>
-            </div>
-          </CardContent>
-        </Card>
+
+              <div className="pt-2 flex gap-2">
+                <Link href="/services"><Button variant="outline" size="sm">Browse all services</Button></Link>
+                <Link href={`/healers?serviceSlug=${service.slug}`}><Button variant="outline" size="sm">View all healers</Button></Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Refund policy */}
+          <ServiceRefundPolicy />
+        </div>
       </div>
+
+      {/* ── How It Works ──────────────────────────────────── */}
+      <ServiceHowItWorks />
+
+      {/* ── Healers ───────────────────────────────────────── */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-semibold">Healers offering {service.name}</h2>
-          <span className="text-sm text-gray-500">{healers.length} available</span>
+          <span className="text-sm text-gray-500">{healerData.length} available</span>
         </div>
-        {healers.length === 0 ? (
+        {healerData.length === 0 ? (
           <p className="text-gray-500 text-sm">No healers published for this service yet.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {healers.map((h: HealerResult) => {
-              const name = h.user?.name ?? 'Healer'
-              return (
-                <Card key={h.id} className="h-full" data-test="healer-card">
-                  <CardContent className="p-5 space-y-3">
-                    <div className="font-medium">{name}</div>
-                    <div className="text-xs text-gray-500">{h.experienceYears} yrs experience • Rating {(h.rating ?? 5).toFixed(1)}</div>
-                    {h.bio && <p className="text-sm text-gray-600 line-clamp-3">{h.bio}</p>}
-                    {h.specializations?.length ? (
-                      <div className="flex flex-wrap gap-2">
-                        {h.specializations.slice(0,4).map((s: string) => (
-                          <span key={s} className="text-xs rounded bg-gray-100 px-2 py-1 text-gray-600">{s}</span>
-                        ))}
-                      </div>
-                    ) : null}
-                    <HealerBookAction healer={{ id: h.id, name, experienceYears: h.experienceYears, rating: h.rating ?? 5 }} serviceId={service.id} serviceName={service.name} />
-                  </CardContent>
-                </Card>
-              )
-            })}
+            {healerData.map((h) => (
+              <HealerCard
+                key={h.id}
+                healer={h}
+                serviceId={service.id}
+                serviceName={service.name}
+              />
+            ))}
           </div>
         )}
       </section>
+
+      {/* ── Reviews ───────────────────────────────────────── */}
+      <ReviewsSection reviews={reviews} avgRating={avgRating} totalCount={totalReviews} />
+
+      {/* ── FAQ ───────────────────────────────────────────── */}
+      <ServiceFAQ
+        serviceName={service.name}
+        serviceSlug={service.slug}
+        duration={service.duration}
+        price={service.price}
+        mode={service.mode}
+      />
+
+      {/* ── Related Services ──────────────────────────────── */}
+      <RelatedServices currentServiceId={service.id} category={service.category} />
+
+      {/* ── Internal Links (blog, audio, programs, community) */}
+      <InternalLinks serviceName={service.name} category={service.category} />
     </div>
   )
 }

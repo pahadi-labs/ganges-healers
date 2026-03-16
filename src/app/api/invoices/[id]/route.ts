@@ -4,17 +4,11 @@ import { resolveInvoiceUrl } from '@/lib/invoices/resolve'
 
 export const dynamic = 'force-dynamic'
 
-type ParamsObj = { id: string }
-function isPromise<T>(v: unknown): v is Promise<T> {
-  return typeof (v as { then?: unknown })?.then === 'function'
-}
-
 export async function GET(
   _req: Request,
-  ctx: { params: ParamsObj | Promise<ParamsObj> }
+  ctx: { params: Promise<{ id: string }> }
 ) {
-  const raw = ctx.params
-  const id = isPromise<ParamsObj>(raw) ? (await raw).id : (raw as ParamsObj)?.id
+  const { id } = await ctx.params
   const url = await resolveInvoiceUrl(id)
   if (!url) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
