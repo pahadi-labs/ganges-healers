@@ -17,7 +17,7 @@ import Page from '@/app/store/[slug]/page'
 
 describe('Product detail breadcrumbs', () => {
   test('renders Home › Store › Copper Bottle; last not link', async () => {
-    const ui = (await Page({ params: Promise.resolve({ slug: 'copper-bottle' }) })) as unknown as React.ReactElement
+    const ui = (await Page({ params: Promise.resolve({ slug: 'copper-bottle' }), searchParams: Promise.resolve({}) })) as unknown as React.ReactElement
     const { container } = render(ui)
     const nav = container.querySelector('nav[aria-label="Breadcrumb"]')
     expect(nav).toBeTruthy()

@@ -60,6 +60,28 @@ export async function activateStoreOrder(args: ActivateArgs): Promise<StoreActiv
     data: { status: 'paid', paymentId: payment.id },
   })
 
+  // Decrement stock counts and auto-disable sold-out products
+  const orderItems = await prisma.orderItem.findMany({
+    where: { orderId: storeOrderId },
+    select: { productId: true, quantity: true },
+  })
+  for (const item of orderItems) {
+    const product = await prisma.product.findUnique({
+      where: { id: item.productId },
+      select: { stockCount: true },
+    })
+    if (product?.stockCount !== null && product?.stockCount !== undefined) {
+      const newCount = Math.max(0, product.stockCount - item.quantity)
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: {
+          stockCount: newCount,
+          ...(newCount === 0 ? { stockStatus: 'OUT' } : newCount <= 5 ? { stockStatus: 'LOW' } : {}),
+        },
+      })
+    }
+  }
+
   console.log('[store][activation][activated]', { orderId: storeOrderId, paymentId: payment.id })
   return { found: true, isStore: true, hasOrderId: true, activated: true, idempotent: false, orderId: storeOrderId, paymentId: payment.id }
 }

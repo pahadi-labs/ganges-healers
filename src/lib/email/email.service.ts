@@ -1,5 +1,8 @@
 import { Resend } from 'resend'
 import { BookingConfirmationEmail as BookingConfirmationEmailComponent } from './templates/booking-confirmation'
+import { QuizAlignmentEmail } from './templates/quiz-alignment'
+import { QuizFollowUpEmail } from './templates/quiz-follow-up'
+import { AbandonedCartEmail } from './templates/abandoned-cart'
 
 const resendApiKey = process.env.RESEND_API_KEY
 const disabled = !resendApiKey
@@ -129,6 +132,84 @@ export const emailService = {
       return { success: true, id: result.data?.id }
     } catch (error) {
       console.warn('[invoice][generate][email_failed]', { invoiceNumber: data.invoiceNumber, error })
+      return { success: false, error }
+    }
+  },
+
+  async sendQuizAlignment(data: {
+    to: string
+    name: string | null
+    chakra: string
+    intention: string
+    productTitle: string
+    productSlug: string
+    supportingProducts?: { title: string; slug: string; chakra: string | null; pricePaise: number }[]
+  }) {
+    if (disabled || !resend) {
+      return { success: false, disabled: true }
+    }
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://gangeshealers.com'
+    try {
+      const result = await resend.emails.send({
+        from: 'Ganges Healers <noreply@gangeshealers.com>',
+        to: data.to,
+        subject: 'Your Sacred Energy Alignment ✨',
+        react: QuizAlignmentEmail({ ...data, siteUrl }),
+      })
+      return { success: true, id: result.data?.id }
+    } catch (error) {
+      safeLogError('sendQuizAlignment', error)
+      return { success: false, error }
+    }
+  },
+
+  async sendQuizFollowUp(data: {
+    to: string
+    name: string | null
+    chakra: string
+    intention: string
+    productTitle: string
+    productSlug: string
+  }) {
+    if (disabled || !resend) {
+      return { success: false, disabled: true }
+    }
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://gangeshealers.com'
+    try {
+      const result = await resend.emails.send({
+        from: 'Ganges Healers <noreply@gangeshealers.com>',
+        to: data.to,
+        subject: 'Your alignment window is still open ✨',
+        react: QuizFollowUpEmail({ ...data, siteUrl }),
+      })
+      return { success: true, id: result.data?.id }
+    } catch (error) {
+      safeLogError('sendQuizFollowUp', error)
+      return { success: false, error }
+    }
+  },
+
+  async sendAbandonedCartRecovery(data: {
+    to: string
+    productTitle: string
+    productSlug: string
+    chakra: string | null
+    intention: string | null
+  }) {
+    if (disabled || !resend) {
+      return { success: false, disabled: true }
+    }
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://gangeshealers.com'
+    try {
+      const result = await resend.emails.send({
+        from: 'Ganges Healers <noreply@gangeshealers.com>',
+        to: data.to,
+        subject: 'Your sacred tool is still waiting for you ✨',
+        react: AbandonedCartEmail({ ...data, siteUrl }),
+      })
+      return { success: true, id: result.data?.id }
+    } catch (error) {
+      safeLogError('sendAbandonedCartRecovery', error)
       return { success: false, error }
     }
   }

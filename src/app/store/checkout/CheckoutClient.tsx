@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useCart, type CartItem } from "@/components/store/CartProvider"
 import { openRazorpayCheckout } from "@/lib/payments/openRazorpayCheckout"
 import { Button } from "@/components/ui/button"
@@ -13,15 +13,45 @@ import { toast } from "sonner"
 import { Trash2, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { trackInitiateCheckout, trackPurchase } from "@/lib/analytics/meta-pixel"
+import { readVariantClient } from "@/lib/experiments/ab-testing"
+import { trackClientEvent } from "@/lib/analytics/track-client-event"
+
+interface DynamicBundleData {
+  bundle: {
+    slug: string
+    title: string
+    pricePaise: number
+    chakra: string | null
+    items: Array<{ product: { slug: string; title: string; pricePaise: number } }>
+  } | null
+  discountPct: number
+  reason: string | null
+}
+
+function getQuizContext(): { chakra?: string; intention?: string } {
+  try {
+    const raw = localStorage.getItem('ganges-quiz')
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    return { chakra: parsed.chakra, intention: parsed.intention }
+  } catch {
+    return {}
+  }
+}
 
 export default function StoreCheckoutPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const { items, removeItem, updateQuantity, totalPaise, clearCart } = useCart()
+  const searchParams = useSearchParams()
+  const source = searchParams.get('source') || undefined
+  const quizContext = useMemo(() => typeof window !== 'undefined' ? getQuizContext() : {}, [])
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
   const verifyingRef = useRef(false)
+  const [upsellBundle, setUpsellBundle] = useState<DynamicBundleData | null>(null)
 
   const [address, setAddress] = useState({
     name: session?.user?.name || "",
@@ -32,6 +62,29 @@ export default function StoreCheckoutPage() {
     postalCode: "",
     phone: "",
   })
+
+  // Track cart activity for abandoned cart recovery
+  const trackedRef = useRef(false)
+  useEffect(() => {
+    if (items.length > 0 && session?.user?.id && !trackedRef.current) {
+      trackedRef.current = true
+      fetch('/api/store/cart-activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items, source, ...quizContext }),
+      }).catch(() => {})
+    }
+  }, [items, session?.user?.id, source, quizContext])
+
+  // Fetch smart bundle upsell
+  useEffect(() => {
+    if (items.length === 0) return
+    const chakra = quizContext.chakra
+    fetch(`/api/store/dynamic-bundle${chakra ? `?chakra=${encodeURIComponent(chakra)}` : ''}`)
+      .then((r) => r.json())
+      .then((data) => { if (data.bundle) setUpsellBundle(data) })
+      .catch(() => {})
+  }, [items.length, quizContext.chakra])
 
   const handleField = (field: string, value: string) => {
     setAddress((prev) => ({ ...prev, [field]: value }))
@@ -58,6 +111,13 @@ export default function StoreCheckoutPage() {
     setLoading(true)
     setError("")
 
+    trackInitiateCheckout({
+      content_ids: items.map((i) => i.productId),
+      num_items: items.reduce((sum, i) => sum + i.quantity, 0),
+      value: totalPaise / 100,
+      currency: 'INR',
+    })
+
     try {
       // Step 1: Create order + Razorpay order
       const checkoutRes = await fetch("/api/store/checkout", {
@@ -65,6 +125,10 @@ export default function StoreCheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+          source,
+          chakra: quizContext.chakra,
+          intention: quizContext.intention,
+          experimentVariant: readVariantClient('product_headline') ?? undefined,
           shippingAddress: {
             name: address.name.trim(),
             line1: address.line1.trim(),
@@ -112,8 +176,19 @@ export default function StoreCheckoutPage() {
         throw new Error(vErr.error || "Payment verification failed")
       }
 
+      trackPurchase({
+        content_ids: items.map((i) => i.productId),
+        content_type: 'product',
+        num_items: items.reduce((sum, i) => sum + i.quantity, 0),
+        value: totalPaise / 100,
+        currency: 'INR',
+      })
+
+      // purchase event is tracked server-side in /api/payments/verify
       setSuccess(true)
       clearCart()
+      // Mark abandoned cart as recovered
+      fetch('/api/store/cart-activity', { method: 'DELETE' }).catch(() => {})
       toast.success("Order placed successfully! Redirecting…")
       setTimeout(() => router.push("/dashboard/orders"), 1500)
     } catch (err) {
@@ -251,6 +326,35 @@ export default function StoreCheckoutPage() {
       </Card>
 
       {error && <div className="mt-4 text-sm text-red-600">{error}</div>}
+
+      {/* Last-chance bundle upsell */}
+      {upsellBundle?.bundle && (
+        <Card className="mt-6 p-4 border-amber-400 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30">
+          <div className="flex items-center gap-2 mb-2">
+            <span>🎯</span>
+            <h3 className="font-semibold">
+              {upsellBundle.reason === 'high_engagement_score' ? 'Curated for You' : 'Complete Your Practice'}
+            </h3>
+            {upsellBundle.discountPct > 0 && (
+              <span className="ml-auto bg-amber-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                {upsellBundle.discountPct}% OFF
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground mb-2">{upsellBundle.bundle.title}</p>
+          <div className="flex items-center justify-between">
+            <span className="text-lg font-bold text-amber-700 dark:text-amber-400">
+              ₹{(Math.round(upsellBundle.bundle.pricePaise * (1 - upsellBundle.discountPct / 100)) / 100).toFixed(0)}
+            </span>
+            <Link
+              href={`/store/bundles/${upsellBundle.bundle.slug}`}
+              className="inline-flex items-center justify-center rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
+            >
+              View Bundle
+            </Link>
+          </div>
+        </Card>
+      )}
 
       <Button
         onClick={handleCheckout}

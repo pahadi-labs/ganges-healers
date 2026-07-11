@@ -8,6 +8,8 @@ import { activateStoreOrder } from '@/lib/payments/activateStoreOrder'
 import { activateCourseEnrollment } from '@/lib/payments/activateCourseEnrollment'
 import { generateInvoiceForPayment } from '@/lib/invoices/generate'
 import { logActivity } from '@/lib/activity-log'
+import { trackEvent } from '@/lib/analytics/track-event'
+import { getSessionId, getExperimentVariants } from '@/lib/analytics/session'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -79,6 +81,20 @@ export async function POST(req: Request) {
   }
   console.log('[payments][verify][success]', { paymentId: updated.id, gatewayPaymentId: paymentId, activation, storeActivation, courseActivation })
   logActivity({ userId: session.user.id, action: 'payment_verified', entityType: 'payment', entityId: updated.id, metadata: { type: updated.type, amountPaise: updated.amountPaise } })
+
+  // Server-side purchase event (trusted — only fires after signature verification + payment update)
+  const [sessionId, variants] = await Promise.all([getSessionId(), getExperimentVariants()])
+  const variantEntries = Object.entries(variants)
+  trackEvent({
+    type: 'purchase',
+    userId: session.user.id,
+    email: session.user.email ?? null,
+    sessionId,
+    experimentVariant: variantEntries.length > 0 ? `${variantEntries[0][0]}:${variantEntries[0][1]}` : null,
+    metadata: { paymentId: updated.id, amountPaise: updated.amountPaise, type: updated.type },
+    allowDuplicate: false,
+  }).catch(() => {})
+
   return NextResponse.json({ verified: true, payment: { id: updated.id }, activation, storeActivation, courseActivation })
   } catch (err) {
     console.error('[payments][verify][error]', err)

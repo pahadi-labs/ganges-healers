@@ -89,7 +89,7 @@ export default async function ServiceDetailPage({
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
-  const [healers, reviews, monthlyBookings] = await Promise.all([
+  const [healers, reviews, monthlyBookings, sacredTools] = await Promise.all([
     prisma.healer.findMany({
       where: { specializations: { has: key } },
       select: {
@@ -122,6 +122,19 @@ export default async function ServiceDetailPage({
         serviceId: service.id,
         createdAt: { gte: monthStart },
       },
+    }),
+    prisma.product.findMany({
+      where: { serviceId: service.id, isActive: true },
+      select: {
+        slug: true,
+        title: true,
+        pricePaise: true,
+        imageUrl: true,
+        isConsecrated: true,
+        chakra: true,
+      },
+      take: 6,
+      orderBy: { createdAt: 'desc' },
     }),
   ])
 
@@ -290,6 +303,32 @@ export default async function ServiceDetailPage({
         price={service.price}
         mode={service.mode}
       />
+
+      {/* ── Sacred Tools Cross-Sell ────────────────────── */}
+      {sacredTools.length > 0 ? (
+        <section className="space-y-4">
+          <h2 className="text-2xl font-semibold">Sacred Tools for This Healing</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {sacredTools.map((tool) => (
+              <Link key={tool.slug} href={`/store/${tool.slug}`} className="border rounded-lg p-3 hover:shadow transition-shadow">
+                <div className="relative">
+                  {tool.imageUrl ? (
+                    <Image src={tool.imageUrl} alt={tool.title} width={200} height={120} className="w-full h-28 object-cover rounded" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" loading="lazy" />
+                  ) : <div className="w-full h-28 bg-muted rounded" />}
+                  {tool.isConsecrated ? (
+                    <span className="absolute top-1.5 left-1.5 bg-amber-900/85 text-amber-100 text-[10px] font-semibold px-1.5 py-0.5 rounded-full backdrop-blur-sm">
+                      ✨ Consecrated
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-2 text-sm font-medium line-clamp-2">{tool.title}</div>
+                {tool.chakra ? <div className="text-xs text-purple-600 dark:text-purple-400">{tool.chakra} Chakra</div> : null}
+                <div className="mt-1 text-sm">₹{(tool.pricePaise / 100).toFixed(2)}</div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* ── Related Services ──────────────────────────────── */}
       <RelatedServices currentServiceId={service.id} category={service.category} />

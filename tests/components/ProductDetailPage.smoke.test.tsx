@@ -15,7 +15,7 @@ jest.mock('@/lib/store/queries', () => ({
 
 describe('ProductDetailPage smoke', () => {
   test('renders title price and stock', async () => {
-    const ui = (await Page({ params: Promise.resolve({ slug: 'oil-1' }) })) as unknown as React.ReactElement
+    const ui = (await Page({ params: Promise.resolve({ slug: 'oil-1' }), searchParams: Promise.resolve({}) })) as unknown as React.ReactElement
     render(ui)
 
     expect(await screen.findByRole('heading', { level: 1, name: /Oil 1/i })).toBeInTheDocument()

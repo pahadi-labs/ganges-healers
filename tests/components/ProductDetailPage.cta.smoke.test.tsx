@@ -16,7 +16,7 @@ jest.mock('@/lib/store/queries', () => ({
 
 describe('ProductDetailPage CTA link', () => {
   test('renders CTA linking to Service with openBooking=1&productSlug', async () => {
-    const ui = (await Page({ params: Promise.resolve({ slug: 'copper-bottle' }) })) as unknown as React.ReactElement
+    const ui = (await Page({ params: Promise.resolve({ slug: 'copper-bottle' }), searchParams: Promise.resolve({}) })) as unknown as React.ReactElement
     render(ui)
     const link = await screen.findByRole('link', { name: /Book a session for this product/i })
     expect(link).toHaveAttribute('href', '/services/yoga-healing?openBooking=1&productSlug=copper-bottle')

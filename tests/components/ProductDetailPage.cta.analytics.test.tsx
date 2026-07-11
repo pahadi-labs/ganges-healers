@@ -24,7 +24,7 @@ jest.mock('@/lib/analytics/client', () => ({
 describe('ProductDetailPage CTA analytics', () => {
   test('fires product_service_cta_click with correct props', async () => {
     const user = userEvent.setup()
-    const ui = (await Page({ params: Promise.resolve({ slug: 'copper-bottle' }) })) as unknown as React.ReactElement
+    const ui = (await Page({ params: Promise.resolve({ slug: 'copper-bottle' }), searchParams: Promise.resolve({}) })) as unknown as React.ReactElement
     render(ui)
 
     const link = await screen.findByRole('link', { name: /Book a session for this product/i })
